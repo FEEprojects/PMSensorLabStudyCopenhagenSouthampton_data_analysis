@@ -1,10 +1,11 @@
 
-sensor_delay_corrected<-"dataset/sensor_delay_corrected.rds"
-sensor_raw_file <- "dataset/sensors.rds"
-dusttrak_file <- "dataset/dusttrak.rds"
-ops_file <- "dataset/ops.rds"
-nanotracer_file <- "dataset/nanotracer.rds"
-dht22_file <- "dataset/dht22.rds"
+sensor_delay_corrected<-"datasets/sensor_delay_corrected.rds"
+sensor_raw_file <- "datasets/sensors.rds"
+sensor_blank <- "datasets/sensors_blank.rds"
+dusttrak_file <- "datasets/dusttrak.rds"
+ops_file <- "datasets/ops.rds"
+nanotracer_file <- "datasets/nanotracer.rds"
+dht22_file <- "datasets/dht22.rds"
 
 # List of experimental conditions and of sensors
 cdt <- readRDS("datasets/conditions_corrected.Rds")

@@ -1,0 +1,38 @@
+---
+title: "Limit of detection - blank conditions"
+output: html_notebook
+---
+
+This notebook generates the 3rd figure of the paper.
+
+```{r message=FALSE, warning=FALSE}
+require(splitstackshape)
+require(openair)
+source("variables.R")
+source("utilities.R")
+```
+
+
+```{r}
+df <- readRDS(sensor_blank) %>%
+  filter(date>=as.POSIXct("2019-08-26 13:06:00",tz="UTC"),date<=as.POSIXct("2019-08-26 14:34:00",tz="UTC")) %>%
+  filter(!(sensor %in% c("HPMA115S0-R0B174843287", "OPCR1-178871513", "OPCR1-178872113", "HPMA115S0-T0B190515497")))
+
+df %>%
+  group_by(sensor) %>%
+  summarise(lod=3*sd(PM25,na.rm=TRUE))->sensor_lod
+sensor_lod
+
+
+df2<-cSplit(indt=sensor_lod,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
+
+df2 %>%
+  select(-sensor_2,-sensor_3)->df2
+
+p<-df2 %>%
+  filter(lod<=15)%>%
+  ggplot()+geom_boxplot(aes(x=sensor_1, y = lod),outlier.shape = NA)+geom_point(aes(x=sensor_1, y = lod),position = position_jitter(w = 0.2, h = 0))+ylab(quickText("Lower limit of detection PM2.5 (ug/m3)"))+xlab("Model of sensor") +theme_bw()
+p
+ggsave(filename = "lod_paper.svg",plot = p,width = 5,height = 5)
+
+```

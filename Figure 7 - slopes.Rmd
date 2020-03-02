@@ -1,0 +1,173 @@
+---
+title: "Slope and R squared per source - Figure 7 and 8"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+
+```{r setup}
+
+source("utilities.R")
+source("variables.R")
+require(ggplot2)
+require(plotly)
+require(cowplot)
+
+source("Table_2_rh_exploration.R")
+
+
+```
+
+
+```{r}
+
+df <- prepare_sensor_data(sensor_delay_corrected, cdt)
+dt <- prepare_dusttrak_data(dusttrak_file, cdt)
+
+df %>%
+  select(sensor, exp, source, date, PM25) %>%
+  filter(sensor!="SHT35") %>%
+  filter(exp!="") %>%
+  group_by(exp, source, sensor) %>%
+  nest() -> tmp
+
+tmp %>%
+  dplyr::mutate(regression = map(data, ~clean_regression(df =.x,dusttrak = dt, 0))) %>%
+  unnest(regression, .drop=TRUE)  ->res
+
+
+
+df2<-cSplit(indt=res,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
+df2 %>%
+  select(-sensor_2,-sensor_3)->res
+
+res <- res %>%
+  flag_site_data(sensor_list)
+
+res_rh_temp <- inner_join(res, summary_rh_temp, by = c("exp"))
+
+
+#write.csv(select(res_rh_temp,-data), "C:/GitHub/AQ_analysis_lab/lm_no_enclosure_cdt_corr.csv")
+
+res_rh_temp <- res_rh_temp %>%
+  mutate(rh_median  = round2(rh_median,0))
+```
+
+# Slope SIG with Box and Whisker
+
+```{r}
+
+
+p_pms<-filter(res_rh_temp,slope_p_value<=0.05) %>%
+  filter(grepl("PMS5003",sensor)) %>%
+  ggplot()+    
+  geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
+      geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
+
+ ylim(c(0,1.2))+
+  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("PMS5003") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+p_pms #+facet_grid(~site)
+p_opcr1<-filter(res_rh_temp,slope_p_value<=0.05) %>%
+  filter(grepl("OPCR1",sensor)) %>%
+   ggplot()+    
+ geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
+      geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
+  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("OPCR1") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+
+p_sps<-filter(res_rh_temp, slope_p_value<=0.05) %>%
+  filter(grepl("SPS030",sensor)) %>%
+   ggplot()+    
+ geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
+      geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
+   ylim(c(0,1.2))+
+  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("SPS030")+xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+
+
+p_sds<-filter(res_rh_temp, slope_p_value<=0.05) %>%
+  filter(grepl("SDS018",sensor)) %>%
+   ggplot()+    
+  geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
+    geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
+   ylim(c(0,1.2))+
+  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("SDS018") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+
+p_hpma<-filter(res_rh_temp, slope_p_value<=0.05) %>%
+  filter(grepl("HPMA115S0",sensor)) %>%
+  ggplot()+    
+  geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
+      geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
+   ylim(c(0,1.2))+
+  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("HPMA115S0") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+
+
+pl_sig<-plot_grid(p_pms, p_sps, p_hpma, p_sds, p_opcr1, ncol = 2)
+p_sps
+p_hpma
+p_sds
+p_opcr1
+pl_sig
+
+#ggsave(pl_sig, filename = "slope_evolution_sig.svg", width=200,height =200,units = "mm")
+
+```
+
+
+# R squared SIG with Box and Whisker
+
+```{r}
+
+
+p_pms<-filter(res_rh_temp,r_squared_p_value<=0.05) %>%
+  filter(grepl("PMS5003",sensor)) %>%
+  ggplot()+    
+  geom_boxplot(aes(x = rh_median,y=r_squared,group=rh_median), size=0.5, fatten=0.8)+
+      geom_line(aes(x = rh_median,y=r_squared, group = sensor, color = sensor,alpha=0.9))+
+
+ ylim(c(0,1.2))+
+  facet_grid(~source)+theme_bw()+ylab("r_squared") + ggtitle("PMS5003") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+p_pms 
+p_opcr1<-filter(res_rh_temp,r_squared_p_value<=0.05) %>%
+  filter(grepl("OPCR1",sensor)) %>%
+   ggplot()+    
+ geom_boxplot(aes(x = rh_median,y=r_squared,group=rh_median), size=0.5, fatten=0.8)+
+      geom_line(aes(x = rh_median,y=r_squared, group = sensor, color = sensor,alpha=0.9))+
+  facet_grid(~source)+theme_bw()+ylab("r_squared") + ggtitle("OPCR1") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+
+p_sps<-filter(res_rh_temp, r_squared_p_value<=0.05) %>%
+  filter(grepl("SPS030",sensor)) %>%
+   ggplot()+    
+ geom_boxplot(aes(x = rh_median,y=r_squared,group=rh_median), size=0.5, fatten=0.8)+
+      geom_line(aes(x = rh_median,y=r_squared, group = sensor, color = sensor,alpha=0.9))+
+   ylim(c(0,1.2))+
+  facet_grid(~source)+theme_bw()+ylab("r_squared") + ggtitle("SPS030")+xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+
+
+p_sds<-filter(res_rh_temp, r_squared_p_value<=0.05) %>%
+  filter(grepl("SDS018",sensor)) %>%
+   ggplot()+    
+  geom_boxplot(aes(x = rh_median,y=r_squared,group=rh_median), size=0.5, fatten=0.8)+
+    geom_line(aes(x = rh_median,y=r_squared, group = sensor, color = sensor,alpha=0.9))+
+   ylim(c(0,1.2))+
+  facet_grid(~source)+theme_bw()+ylab("r_squared") + ggtitle("SDS018") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+
+p_hpma<-filter(res_rh_temp, r_squared_p_value<=0.05) %>%
+  filter(grepl("HPMA115S0",sensor)) %>%
+  ggplot()+    
+  geom_boxplot(aes(x = rh_median,y=r_squared,group=rh_median), size=0.5, fatten=0.8)+
+      geom_line(aes(x = rh_median,y=r_squared, group = sensor, color = sensor,alpha=0.9))+
+   ylim(c(0,1.2))+
+  facet_grid(~source)+theme_bw()+ylab("r_squared") + ggtitle("HPMA115S0") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+
+
+pl_sig<-plot_grid(p_pms, p_sps, p_hpma, p_sds, p_opcr1, ncol = 2)
+p_sps
+p_hpma
+p_sds
+p_opcr1
+pl_sig
+
+#ggsave(pl_sig, filename = "r_squared_evolution_sig.svg", width=200,height =200,units = "mm")
+
+```
