@@ -261,7 +261,7 @@ p_legend<-get_legend(p)
 plot_grid(p_legend)
 
 p<-p+theme(legend.position = "none")
-p+  theme(panel.spacing = unit(0, "lines")) +
+p<-p+  theme(panel.spacing = unit(0, "lines")) +
   theme(plot.margin = unit(c(0,0,0,0), "lines"))
 
 ggsave(p,filename = "ratio_comparison_spacing.svg",unit = "mm", width= 180, height = 240)

@@ -1,0 +1,81 @@
+---
+title: "Supplementary Figures A4 to A8 - Linear model"
+output: html_notebook
+---
+
+```{r setup}
+
+source("utilities.R")
+source("variables.R")
+require(ggplot2)
+require(plotly)
+require(cowplot)
+require(ggpubr)
+require(GGally)
+
+
+
+
+```
+
+
+```{r}
+
+df <- prepare_sensor_data(sensor_delay_corrected, cdt)
+dt <- prepare_dusttrak_data(dusttrak_file, cdt)
+
+df_join <- df %>%
+  inner_join(select(dt,-exp,-variation,-sensor,-source,-site), by=c("date","date"))
+```
+
+# PMS5003
+```{r}
+df_ft<-filter(df_join, grepl("PMS5003",sensor), source !="")
+p<-ggscatter(data = df_ft, y = "PM25", x = "pm2.5", add = "reg.line",color="source",size=0.5,alpha=0.5)+facet_grid(sensor~exp)+ theme_bw()+ theme(legend.position = "bottom")+geom_abline(slope =1)+
+  stat_cor(aes(color=source, label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),size=3,label.x=48)+
+  xlab(label = quickText("DustTrak PM2.5 (ug.m-3)"))+ylab(label = quickText("Sensor PM2.5 (ug.m-3)"))+  theme(panel.spacing = unit(0, "lines")) +
+  theme(plot.margin = unit(c(0,0,0,0), "lines"))
+
+p
+ggsave(p,filename = "lm_pms.svg", height = 12,width = 12)  
+```
+
+# SPS030
+```{r}
+df_ft<-filter(df_join, grepl("SPS",sensor), source !="")
+p<-ggscatter(data = df_ft, y = "PM25", x = "pm2.5", add = "reg.line",color="source",size=0.5,alpha=0.5)+facet_grid(sensor~exp)+ theme_bw()+ theme(legend.position = "bottom")+geom_abline(slope =1)+xlab(label = quickText("DustTrak PM2.5 (ug.m-3)"))+ylab(label = quickText("Sensor PM2.5 (ug.m-3)"))+  theme(panel.spacing = unit(0, "lines")) +
+  theme(plot.margin = unit(c(0,0,0,0), "lines"))
+
+p
+ggsave(p,filename = "lm_sps.svg", height = 12,width = 12)  
+```
+
+# SDS018
+```{r}
+df_ft<-filter(df_join, grepl("SDS",sensor), source !="")
+p<-ggscatter(data = df_ft, y = "PM25", x = "pm2.5", add = "reg.line",color="source",size=0.5,alpha=0.5)+facet_grid(sensor~exp)+ theme_bw()+ theme(legend.position = "bottom")+geom_abline(slope =1)+xlab(label = quickText("DustTrak PM2.5 (ug.m-3)"))+ylab(label = quickText("Sensor PM2.5 (ug.m-3)"))+  theme(panel.spacing = unit(0, "lines")) +
+  theme(plot.margin = unit(c(0,0,0,0), "lines"))
+
+p
+ggsave(p,filename = "lm_sds.svg", height = 12,width = 12)  
+```
+
+# OPCR1
+```{r}
+df_ft<-filter(df_join, grepl("SDS",sensor), source !="")
+p<-ggscatter(data = df_ft, y = "PM25", x = "pm2.5", add = "reg.line",color="source",size=0.5,alpha=0.5)+facet_grid(sensor~exp)+ theme_bw()+ theme(legend.position = "bottom")+geom_abline(slope =1)+xlab(label = quickText("DustTrak PM2.5 (ug.m-3)"))+ylab(label = quickText("Sensor PM2.5 (ug.m-3)"))+  theme(panel.spacing = unit(0, "lines")) +
+  theme(plot.margin = unit(c(0,0,0,0), "lines"))
+
+p
+ggsave(p,filename = "lm_opc.svg", height = 12,width = 12)  
+```
+
+# HPMA115S0
+```{r}
+df_ft<-filter(df_join, grepl("HPMA",sensor), source !="")
+p<-ggscatter(data = df_ft, y = "PM25", x = "pm2.5", add = "reg.line",color="source",size=0.5,alpha=0.5)+facet_grid(sensor~exp)+ theme_bw()+ theme(legend.position = "bottom")+geom_abline(slope =1)+xlab(label = quickText("DustTrak PM2.5 (ug.m-3)"))+ylab(label = quickText("Sensor PM2.5 (ug.m-3)"))+  theme(panel.spacing = unit(0, "lines")) +
+  theme(plot.margin = unit(c(0,0,0,0), "lines"))
+
+p
+ggsave(p,filename = "lm_hpma.svg", height = 12,width = 12)  
+```
