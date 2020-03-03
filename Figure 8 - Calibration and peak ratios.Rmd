@@ -1,0 +1,275 @@
+---
+title: "Calibration of the sensors"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup}
+
+source("utilities.R")
+source("variables.R")
+require(ggplot2)
+require(plotly)
+require(cowplot)
+require(splitstackshape)
+require(ggpubr)
+source("Table_2_rh_exploration.R")
+
+
+```
+
+
+```{r}
+
+df <- prepare_sensor_data(sensor_delay_corrected, cdt)
+dt <- prepare_dusttrak_data(dusttrak_file, cdt)
+
+df %>%
+  select(sensor, exp, source, date, PM25) %>%
+  filter(sensor!="SHT35") %>%
+  filter(exp!="") %>%
+  group_by(exp, source, sensor) %>%
+  nest() -> tmp
+
+tmp %>%
+  dplyr::mutate(regression = map(data, ~clean_regression(df =.x,dusttrak = dt, 0))) %>%
+  unnest(regression, .drop=TRUE)  ->res
+
+
+
+df2<-cSplit(indt=res,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
+df2 %>%
+  select(-sensor_2,-sensor_3)->res
+
+res <- res %>%
+  flag_site_data(sensor_list)
+
+res_rh_temp <- inner_join(res, summary_rh_temp, by = c("exp"))
+
+
+#write.csv(select(res_rh_temp,-data), "C:/GitHub/AQ_analysis_lab/lm_no_enclosure_cdt_corr.csv")
+
+res_rh_temp <- res_rh_temp %>%
+  mutate(rh_median  = round2(rh_median,0))
+```
+
+
+```{r}
+df %>% inner_join(select(res_rh_temp, sensor, exp, source, slope, intercept, slope_p_value), by = c("sensor", "exp", "source")) -> df_coeff
+
+df_coeff %>% 
+  mutate(PM25_corr = ifelse(slope_p_value<=0.05,(PM25-intercept)/slope), -999) %>%
+  filter(PM25_corr != -999) -> df_calibrated
+
+df2<-cSplit(indt=df_calibrated,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
+
+df2 %>%
+  select(-sensor_2,-sensor_3)->df_calibrated
+```
+
+What does it looks like?
+
+```{r}
+p_opcr1 <- ggplot()+
+  geom_line(data = filter(df_calibrated, sensor_1=="OPCR1", exp != ""),
+            aes(x = date, y = PM25_corr, group = sensor, colour = sensor, 
+                text = paste0("Box: ", site,
+                              "<br>Exp: ", exp,
+                              "<br>Source: ", source))) +
+  labs(y = "PM2.5 (ug/m3)") +
+  geom_line(data = filter(dt, exp != ""), aes(x = date,y = pm2.5), colour = "red", linetype = "dashed")+
+  scale_x_datetime() + theme_bw() + ggtitle("OPCR1") + theme(plot.title = element_text(hjust = 0.5))+facet_wrap(~exp, ncol = 1, scales = "free_x")
+
+
+p_pms5003 <- ggplot()+
+  geom_line(data = filter(df_calibrated, sensor_1=="PMS5003", exp != ""),
+            aes(x = date, y = PM25_corr, group = sensor, colour = sensor, 
+                text = paste0("Box: ", site,
+                              "<br>Exp: ", exp,
+                              "<br>Source: ", source))) +
+  labs(y = "PM2.5 (ug/m3)") +
+  geom_line(data = filter(dt, exp != ""), aes(x = date,y = pm2.5), colour = "red", linetype = "dashed")+
+  scale_x_datetime() + theme_bw() + ggtitle("PMS5003") + theme(plot.title = element_text(hjust = 0.5))+facet_wrap(~exp, ncol = 1, scales = "free_x")
+
+p_sds018 <- ggplot()+
+  geom_line(data = filter(df_calibrated, sensor_1=="SDS018", exp != ""),
+            aes(x = date, y = PM25_corr, group = sensor, colour = sensor, 
+                text = paste0("Box: ", site,
+                              "<br>Exp: ", exp,
+                              "<br>Source: ", source))) +
+  labs(y = "PM2.5 (ug/m3)") +
+  geom_line(data = filter(dt, exp != ""), aes(x = date,y = pm2.5), colour = "red", linetype = "dashed")+
+  scale_x_datetime() + theme_bw() + ggtitle("SDS018") + theme(plot.title = element_text(hjust = 0.5))+facet_wrap(~exp, ncol = 1, scales = "free_x")
+
+p_sps030 <- ggplot()+
+  geom_line(data = filter(df_calibrated, sensor_1=="SPS030", exp != ""),
+            aes(x = date, y = PM25_corr, group = sensor, colour = sensor, 
+                text = paste0("Box: ", site,
+                              "<br>Exp: ", exp,
+                              "<br>Source: ", source))) +
+  labs(y = "PM2.5 (ug/m3)") +
+  geom_line(data = filter(dt, exp != ""), aes(x = date,y = pm2.5), colour = "red", linetype = "dashed")+
+  scale_x_datetime() + theme_bw() + ggtitle("SPS030") + theme(plot.title = element_text(hjust = 0.5))+facet_wrap(~exp, ncol = 1, scales = "free_x")
+
+p_hpma <- ggplot()+
+  geom_line(data = filter(df_calibrated, sensor_1=="HPMA115S0", exp != ""),
+            aes(x = date, y = PM25_corr, group = sensor, colour = sensor, 
+                text = paste0("Box: ", site,
+                              "<br>Exp: ", exp,
+                              "<br>Source: ", source))) +
+  labs(y = "PM2.5 (ug/m3)") +
+  geom_line(data = filter(dt, exp != ""), aes(x = date,y = pm2.5), colour = "red", linetype = "dashed")+
+  scale_x_datetime() + theme_bw() + ggtitle("HPMA115S0") + theme(plot.title = element_text(hjust = 0.5))+facet_wrap(~exp, ncol = 1, scales = "free_x")
+
+ggplotly(p_opcr1, dynamicTicks = TRUE)
+ggplotly(p_pms5003, dynamicTicks = TRUE)
+ggplotly(p_sds018, dynamicTicks = TRUE)
+ggplotly(p_sps030, dynamicTicks = TRUE)
+ggplotly(p_hpma, dynamicTicks = TRUE)
+```
+
+Now if we extract the peaks
+
+```{r}
+peaks<-readRDS(file="datasets/peaks_characteristics.rds") 
+
+
+res <- df_calibrated %>%
+    filter(date>=as.POSIXct(paste("2019-09-05", peaks[1,]$Start),tz="UTC"), date<=as.POSIXct(paste("2019-09-05", peaks[1,]$End),tz="UTC")) %>%
+    group_by(sensor) %>%
+  filter(PM25>=1) %>%
+  summarise(max_value = max(PM25_corr)) %>%
+    mutate(Experiment = peaks[1,]$Experiment, Source = peaks[1,]$Source, Variation= peaks[1,]$Variation, Number = peaks[1,]$Number)
+for(row in 2:nrow(peaks)){
+  df_calibrated %>%
+    filter(date>=as.POSIXct(paste("2019-09-05", peaks[row,]$Start),tz="UTC"), date<=as.POSIXct(paste("2019-09-05", peaks[row,]$End),tz="UTC")) %>%
+    group_by(sensor) %>%
+      filter(PM25>=1) %>%
+  summarise(max_value = max(PM25_corr)) %>%
+    mutate(Experiment = peaks[row,]$Experiment, Source = peaks[row,]$Source, Variation= peaks[row,]$Variation, Number = peaks[row,]$Number) -> tmp
+  res<-rbind(res,tmp)
+  
+} 
+res %>%
+  inner_join(peaks, by=c("Source", "Experiment", "Variation", "Number")) ->res_bind
+
+res_bind<-res_bind %>%
+  mutate(ratio = max_value/Concentration)
+
+
+
+df2<-cSplit(indt=res_bind,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
+
+df2 %>%
+  select(-sensor_2,-sensor_3)->res_bin
+
+
+```
+
+# Influence of the concentration on the value of the ratio
+
+```{r}
+
+res_bin %>%
+  filter(Variation == "Peak") %>%
+  ggplot(aes(x=Experiment,y=ratio)) + 
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+
+  facet_wrap(sensor_1~Source,ncol=4)+ylab("Ratio sensor/dusttrak")+theme_bw()->p
+p
+
+res_bin %>%
+  filter(Variation == "Peak") %>%
+  ggplot(aes(x=Experiment,y=ratio)) + 
+  geom_boxplot()+
+  facet_wrap(sensor_1~Source,ncol=2)+ylab("Ratio sensor/dusttrak")+theme_bw()->p
+p
+#ggsave(p,filename = "peaks_ratio.png",width = 12, height = 12)
+
+
+res_bin %>%
+  filter(Variation == "Peak") %>%
+  ggplot(aes(x=Experiment,y=ratio)) + 
+  geom_boxplot(outlier.shape = NA)+
+  facet_wrap(sensor_1~Source,ncol=2)+ylab("Ratio sensor/dusttrak")+theme_bw()+
+  scale_y_continuous(limits = c(0,quantile(res_bin$ratio, c(0.9)))) -> p
+p
+#ggsave(p,filename = "peaks_ratio_no_outliers.png",width = 12, height = 12)
+
+p<-res_bin %>%
+  filter(Variation == "Peak") %>%
+  ungroup() %>%
+  ggplot() + geom_point(aes(x=Concentration,y=ratio,color=sensor))+facet_wrap(sensor_1~Source,ncol=4,scales="free")+ylab("Ratio sensor/dusttrak")
+ggplotly(p, dynamicTicks = TRUE)
+
+```
+
+
+
+# Compare with uncalibrated data
+
+```{r}
+
+res <- df %>%
+    filter(date>=as.POSIXct(paste("2019-09-05", peaks[1,]$Start),tz="UTC"), date<=as.POSIXct(paste("2019-09-05", peaks[1,]$End),tz="UTC")) %>%
+    group_by(sensor) %>%
+  filter(PM25>=1) %>%
+  summarise(max_value = max(PM25)) %>%
+    mutate(Experiment = peaks[1,]$Experiment, Source = peaks[1,]$Source, Variation= peaks[1,]$Variation, Number = peaks[1,]$Number)
+for(row in 2:nrow(peaks)){
+  df %>%
+    filter(date>=as.POSIXct(paste("2019-09-05", peaks[row,]$Start),tz="UTC"), date<=as.POSIXct(paste("2019-09-05", peaks[row,]$End),tz="UTC")) %>%
+    group_by(sensor) %>%
+      filter(PM25>=1) %>%
+  summarise(max_value = max(PM25)) %>%
+    mutate(Experiment = peaks[row,]$Experiment, Source = peaks[row,]$Source, Variation= peaks[row,]$Variation, Number = peaks[row,]$Number) -> tmp
+  res<-rbind(res,tmp)
+  
+} 
+res %>%
+  inner_join(peaks, by=c("Source", "Experiment", "Variation", "Number"))  %>%
+  mutate(ratio = max_value/Concentration)->res_bind_uncalibrated
+
+
+res_bind$status <- "Calibrated"
+res_bind_uncalibrated$status <- "Not Calibrated"
+res_comparison <- rbind(res_bind, res_bind_uncalibrated)
+
+df2<-cSplit(indt=res_comparison,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
+
+df2 %>%
+  select(-sensor_2,-sensor_3)->res_comparison
+
+
+
+```
+
+```{r}
+
+res_comparison$sensor_1 <- factor(res_comparison$sensor_1, levels = c("PMS5003", "SPS030", "HPMA115S0", "SDS018", "OPCR1"))
+
+res_comparison$status <- factor(res_comparison$status, levels = c("Not Calibrated", "Calibrated"))
+res_comparison %>%
+  filter(Variation == "Peak") %>%
+  ggplot(aes(x=Experiment,y=ratio,fill=status)) + 
+   geom_boxplot(width=0.8,position=position_dodge(width = 0.8),alpha=0.8,lwd=0.3,fatten=0.8,outlier.size = 0.8,outlier.alpha=0.5,outlier.stroke=0)+
+  facet_wrap(sensor_1~Source,ncol=4)+ylab("Ratio sensor/dusttrak")+theme_bw()+
+  scale_y_continuous(breaks=pretty(c(-1,6), n=14),sec.axis = dup_axis(name=NULL))+
+  theme(axis.text.x = element_text(angle=90,size = 6))->p
+p_legend<-get_legend(p)
+
+plot_grid(p_legend)
+
+p<-p+theme(legend.position = "none")
+p+  theme(panel.spacing = unit(0, "lines")) +
+  theme(plot.margin = unit(c(0,0,0,0), "lines"))
+
+ggsave(p,filename = "ratio_comparison_spacing.svg",unit = "mm", width= 180, height = 240)
+ggsave(as_ggplot(p_legend),filename = "ratio_comparison_legend.svg",unit = "mm", width= 180, height = 240)
+
+
+```
+
+
+
+
