@@ -1,0 +1,60 @@
+---
+title: "Figure A2_Experiment characteristics - peaks"
+output: html_notebook
+---
+
+```{r}
+require(ggplot2)
+require(dplyr)
+peaks<-read.csv(file="datasets/peaks_characteristics.csv")
+require(forcats)
+require(lubridate)
+source("variables.R")
+source("utilities.R")
+peaks <- peaks %>% filter(Experiment !="")
+
+
+```
+
+
+```{r}
+
+concentration<-peaks %>%
+  filter(Variation == "Peak") %>%
+  filter(Experiment != "") %>%
+  ggplot()+
+  geom_boxplot(aes(x = Source, y = Concentration))+ 
+  geom_point(aes(x = Source, y =Concentration))+
+  facet_wrap(~Experiment, ncol = 1)+theme_bw()+ylab(label="Peak concentration (μg/m3)")
+
+
+peaks$duration<-seconds(hms(peaks$Duration))
+peaks$duration
+
+duration<-peaks %>%
+  filter(Variation == "Peak") %>%
+  filter(Experiment != "") %>%
+  ggplot()+
+  geom_boxplot(aes(x = Source, y = duration))+ 
+  geom_point(aes(x = Source, y =duration))+
+  facet_wrap(~Experiment, ncol = 1)+theme_bw()+ylab(label="Peak duration (s)")
+
+require(cowplot)
+
+p <- plot_grid(concentration, duration, ncol =2)
+p
+
+#ggsave(p, filename = "peak_characteristics.svg", width = 6, height = 6)
+
+```
+
+```{r}
+
+peaks %>%
+  summarise(mean(Concentration))
+
+  
+
+```
+
+

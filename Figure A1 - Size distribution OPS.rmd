@@ -1,0 +1,220 @@
+---
+title: "Figure A1 - Size distribution OPS"
+output: html_notebook
+---
+
+Figure A1. Size distribution measured by the OPS during the different experiments for peaks and
+stable concentrations of incense and candle smoke. The axis are in a logarithmic scale. N is the number
+of particles in #1/cm3, Dp is the mean diameter of the particles.
+
+```{r}
+
+
+source("utilities.R")
+source("variables.R")
+require(cowplot)
+require(scales)
+
+ops<- readRDS(ops_file)
+
+nanotracer <- readRDS(nanotracer_file)
+ops<-flag_cdt_data(ops,cdt)
+require(forcats)
+ops <- ops %>% filter(exp !="")
+
+```
+
+# Candle first peak
+
+```{r, warning=FALSE}
+
+
+
+#Initialise
+ops %>%  filter(exp == "(1) RH=54%") %>%
+  summarise_all("mean") %>%
+  select(starts_with("Bin.")) %>%
+  gather(bin_size, particle_number) ->ops_distrib
+ops_distrib$mean_bin_dimension = 0
+ops_distrib$diff_bin_dimension = 0
+
+#Define the size distribution of Bin.X as the mean between the boundaries of Bin.X and Bin.X+1
+ops_distrib[ops_distrib$bin_size=="Bin.1",]$mean_bin_dimension = (0.3+0.374)/2
+ops_distrib[ops_distrib$bin_size=="Bin.2",]$mean_bin_dimension = (0.374+0.465)/2
+ops_distrib[ops_distrib$bin_size=="Bin.3",]$mean_bin_dimension = (0.465 + 0.579)/2
+ops_distrib[ops_distrib$bin_size=="Bin.4",]$mean_bin_dimension = (0.579+0.721)/2
+ops_distrib[ops_distrib$bin_size=="Bin.5",]$mean_bin_dimension = (0.721+0.897)/2
+ops_distrib[ops_distrib$bin_size=="Bin.6",]$mean_bin_dimension = (0.897+1.117)/2
+ops_distrib[ops_distrib$bin_size=="Bin.7",]$mean_bin_dimension = (1.117+1.391)/2
+ops_distrib[ops_distrib$bin_size=="Bin.8",]$mean_bin_dimension = (1.391+1.732)/2
+ops_distrib[ops_distrib$bin_size=="Bin.9",]$mean_bin_dimension = (1.732+2.156)/2
+ops_distrib[ops_distrib$bin_size=="Bin.10",]$mean_bin_dimension = (2.156+2.685)/2
+ops_distrib[ops_distrib$bin_size=="Bin.11",]$mean_bin_dimension = (2.685+3.343)/2
+ops_distrib[ops_distrib$bin_size=="Bin.12",]$mean_bin_dimension = (3.343+4.162)/2
+ops_distrib[ops_distrib$bin_size=="Bin.13",]$mean_bin_dimension = (4.162+5.182)/2
+ops_distrib[ops_distrib$bin_size=="Bin.14",]$mean_bin_dimension = (5.182+6.451)/2
+ops_distrib[ops_distrib$bin_size=="Bin.15",]$mean_bin_dimension = (6.451+8.031)/2
+ops_distrib[ops_distrib$bin_size=="Bin.16",]$mean_bin_dimension = (8.031+10)/2
+ops_distrib[ops_distrib$bin_size=="Bin.17",]$mean_bin_dimension = 10
+
+ops_distrib[ops_distrib$bin_size=="Bin.1",]$diff_bin_dimension = log10(0.3)-log10(0.374)
+ops_distrib[ops_distrib$bin_size=="Bin.2",]$diff_bin_dimension = log10(0.374)-log10(0.465)
+ops_distrib[ops_distrib$bin_size=="Bin.3",]$diff_bin_dimension = log10(0.465) - log10(0.579)
+ops_distrib[ops_distrib$bin_size=="Bin.4",]$diff_bin_dimension = log10(0.579)-log10(0.721)
+ops_distrib[ops_distrib$bin_size=="Bin.5",]$diff_bin_dimension = log10(0.721)-log10(0.897)
+ops_distrib[ops_distrib$bin_size=="Bin.6",]$diff_bin_dimension = log10(0.897)-log10(1.117)
+ops_distrib[ops_distrib$bin_size=="Bin.7",]$diff_bin_dimension = log10(1.117)-log10(1.391)
+ops_distrib[ops_distrib$bin_size=="Bin.8",]$diff_bin_dimension = log10(1.391)-log10(1.732)
+ops_distrib[ops_distrib$bin_size=="Bin.9",]$diff_bin_dimension = log10(1.732)-log10(2.156)
+ops_distrib[ops_distrib$bin_size=="Bin.10",]$diff_bin_dimension = log10(2.156)-log10(2.685)
+ops_distrib[ops_distrib$bin_size=="Bin.11",]$diff_bin_dimension = log10(2.685)-log10(3.343)
+ops_distrib[ops_distrib$bin_size=="Bin.12",]$diff_bin_dimension = log10(3.343)-log10(4.162)
+ops_distrib[ops_distrib$bin_size=="Bin.13",]$diff_bin_dimension = log10(4.162)-log10(5.182)
+ops_distrib[ops_distrib$bin_size=="Bin.14",]$diff_bin_dimension = log10(5.182)-log10(6.451)
+ops_distrib[ops_distrib$bin_size=="Bin.15",]$diff_bin_dimension = log10(6.451)-log10(8.031)
+ops_distrib[ops_distrib$bin_size=="Bin.16",]$diff_bin_dimension = log10(8.031)-log10(10)
+ops_distrib[ops_distrib$bin_size=="Bin.17",]$diff_bin_dimension = 10
+
+```
+
+
+
+# Candle and Incense all peaks and stable
+
+```{r, warning=FALSE}
+
+ops %>%  
+  filter(variation == "Peaks", source == "Candle") %>%
+  group_by(exp) %>%
+  summarise_all("mean") %>%
+  select(exp,starts_with("Bin.")) %>%
+  gather(bin_size, particle_number,-exp) %>%
+  inner_join(select(ops_distrib, diff_bin_dimension, mean_bin_dimension, bin_size),
+             by = c("bin_size", "bin_size")) %>% 
+  mutate(dN_dlog = particle_number/(-diff_bin_dimension)) %>%
+  
+  ggplot(aes(x = mean_bin_dimension, y = dN_dlog,colour=exp)) + 
+  geom_line() + 
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x))) +
+  scale_x_log10() + 
+  annotation_logticks(sides = "bl") + 
+  ggtitle("Candle Peaks") +
+  theme_bw() +
+  ylab(label = expression(frac("dN", "dlog(Dp)"))) +
+  xlab(label = "Dp (μm)") + 
+  scale_colour_manual(values = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E"))->p
+
+
+legend_p <- get_legend(p)
+
+p<-p+theme(legend.position = "none",plot.title = element_text(hjust = 0.5))
+legend<-plot_grid(legend_p)
+p
+
+#ggsave(p,filename = "size_distribution_candle_peaks.svg", height =4, width =4)
+#ggsave(legend, filename = "size_distribution_candle_peaks_legend.svg", height =4, width =4)
+
+ops %>%  
+  filter(variation == "Stable", source == "Candle") %>%
+  group_by(exp) %>%
+  summarise_all("mean") %>%
+  select(exp,starts_with("Bin.")) %>%
+  gather(bin_size, particle_number,-exp) %>%
+  inner_join(select(ops_distrib, diff_bin_dimension, mean_bin_dimension, bin_size),
+             by = c("bin_size", "bin_size")) %>% 
+  mutate(dN_dlog = particle_number/(-diff_bin_dimension)) %>%
+  
+  ggplot(aes(x = mean_bin_dimension, y = dN_dlog,colour=exp)) + 
+  geom_line() + 
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x))) +
+  scale_x_log10() + 
+  annotation_logticks(sides = "bl") + 
+  ggtitle("Candle Stable") +
+  theme_bw() +
+  ylab(label = expression(frac("dN","dlog(Dp)"))) +
+  xlab(label = "Dp (μm)") + 
+  scale_colour_manual(values = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E"))->p
+
+
+legend_p <- get_legend(p)
+
+p <- p + theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+legend <- plot_grid(legend_p)
+p
+legend
+
+#ggsave(p,filename = "size_distribution_candle_stable.svg", height =4, width =4)
+#ggsave(legend, filename = "size_distribution_candle_stable_legend.svg", height =4, width =4)
+
+
+
+
+ops %>%  
+  filter(variation == "Peaks", source == "Incense") %>%
+  group_by(exp) %>%
+  summarise_all("mean") %>%
+  select(exp,starts_with("Bin.")) %>%
+  gather(bin_size, particle_number,-exp) %>%
+  inner_join(select(ops_distrib, diff_bin_dimension, mean_bin_dimension, bin_size),
+             by = c("bin_size", "bin_size")) %>% 
+  mutate(dN_dlog = particle_number/(-diff_bin_dimension)) %>%
+  
+  ggplot(aes(x = mean_bin_dimension, y = dN_dlog,colour=exp)) + 
+  geom_line() + 
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x))) +
+  scale_x_log10() + 
+  annotation_logticks(sides = "bl") + 
+  ggtitle("Incense Peaks") +
+  theme_bw() +
+  ylab(label = expression(frac("dN","dlog(Dp)"))) +
+  xlab(label = "Dp (μm)") + 
+  scale_colour_manual(values = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E"))->p
+
+
+legend_p <- get_legend(p)
+
+p <- p + theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+legend <- plot_grid(legend_p)
+p
+#ggsave(p,filename = "size_distribution_incense_peaks.svg", height =4, width =4)
+#ggsave(legend, filename = "size_distribution_incense_peaks_legend.svg", height =14, width =8)
+
+
+ops %>%  
+  filter(variation == "Stable", source == "Incense") %>%
+  group_by(exp) %>%
+  summarise_all("mean") %>%
+  select(exp, starts_with("Bin.")) %>%
+  gather(bin_size, particle_number,-exp) %>%
+  inner_join(select(ops_distrib, diff_bin_dimension, mean_bin_dimension, bin_size),
+             by = c("bin_size", "bin_size")) %>% 
+  mutate(dN_dlog = particle_number/(-diff_bin_dimension)) %>%
+  
+  ggplot(aes(x = mean_bin_dimension, y = dN_dlog,colour=exp)) + 
+  geom_line() + 
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x))) +
+  scale_x_log10() + 
+  annotation_logticks(sides = "bl") +
+  ggtitle("Incense Stable") +
+  theme_bw() +
+  ylab(label = expression(frac("dN","dlog(Dp)"))) +
+  xlab(label = "Dp (μm)") + 
+  scale_colour_manual(values = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E"))->p
+
+
+legend_p <- get_legend(p)
+
+p < -p + theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+legend <- plot_grid(legend_p)
+p
+
+#ggsave(p,filename = "size_distribution_incense_stable.svg", height =4, width =4)
+#ggsave(legend, filename = "size_distribution_incense_stable_legend.svg", height =4, width =4)
+
+
+```
+

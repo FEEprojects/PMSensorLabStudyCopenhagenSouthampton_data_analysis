@@ -3,6 +3,10 @@ title: "Limit of detection according to Wallace 2011 and Zikova 2017"
 output: html_notebook
 ---
 
+Table A2. PM2.5 concentration range, the mean and the standard deviation of the PM2.5 concentrations
+within that range, the ration of the mean and the standard deviation and the number of data points
+used for the calculations for Honeywell HPMA115S0. The Lower limit of detection withWallace et al.
+[63] method is defined as the PM2.5 concentration above which the ratio is >3.
 
 
 ```{r}
@@ -17,9 +21,8 @@ require(splitstackshape)
 
 ```{r}
 df <- readRDS(sensor_blank)
-df2<-cSplit(indt=df,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
-df2 %>%
-  select(-sensor_2,-sensor_3)->df
+df<-cSplit(indt=df,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE) %>%
+  select(-sensor_2,-sensor_3)
 ```
 
 

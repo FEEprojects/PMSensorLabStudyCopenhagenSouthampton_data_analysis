@@ -1,0 +1,49 @@
+---
+title: "Table A1. Nanotracer statistics"
+output: html_notebook
+---
+
+Table A1. Mean ultrafine particles number concentration (#/cm3) during each experiments measured
+by the Nanotracer. Relative humidity is given  two standard deviation.
+
+
+```{r}
+
+source("utilities.R")
+source("variables.R")
+
+nanotracer <- readRDS(nanotracer_file)
+
+nanotracer <- flag_cdt_data(nanotracer, cdt)
+
+```
+
+
+
+```{r}
+
+p_nano<-nanotracer %>%
+  filter(source == "Incense") %>%
+  ggplot() +
+  geom_line(aes(x=date, y = N.1.))+ylab("Ultrafine particles number (#/cm3)")+theme_bw()+facet_wrap(~exp, ncol = 1, scales = "free")
+
+
+p_1<-nanotracer %>%
+    filter(source == "Incense") %>%
+  ggplot() +
+  geom_line(aes(x=date, y = dp_av.1.))+ylab("Ultrafine particle mean diameter (nm)")+theme_bw()+facet_wrap(~exp, ncol = 1, scales = "free")
+
+p_nano
+p_1
+
+```
+
+```{r}
+
+nanotracer %>%
+  group_by(exp,source,variation) %>%
+  summarise(mean(N.1.), sum(N.1.), mean(dp_av.1.)) %>%
+  arrange(exp)
+
+
+```

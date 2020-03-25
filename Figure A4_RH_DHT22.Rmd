@@ -1,0 +1,80 @@
+---
+title: "Figure A4. RH and temperature from DHT22"
+output: html_notebook
+---
+
+Figure A4. Evolution of the relative humidity and temperature during the five experiments comparing
+the readings of the DHT22, and the four SHT35 in each of the air quality monitors.
+
+```{r setup}
+
+source("utilities.R")
+source("variables.R")
+require(ggforce)
+require(dplyr)
+require(ggplot2)
+require(plotly)
+df_rht<-readRDS(dht22_file)
+
+
+df<-readRDS(sensor_raw_file)
+
+df_sht <- df %>%
+  filter(sensor == "SHT35")
+
+```
+
+
+```{r}
+
+require(forcats)
+x<-factor(df_sht$site)
+
+df_sht$site<-fct_recode(x, "SHT35 lab-1" = "lab-1", "SHT35 lab-2" = "lab-2", "SHT35 lab-3" ="lab-3", "SHT35 lab-4" = "lab-4")
+
+p_temp<-df_rht %>%
+  filter(date >= as.POSIXct("2019-09-05 07:00:00", tz="UTC"), date<= as.POSIXct("2019-09-05 12:33:49", tz = "UTC")) %>%
+  ggplot() +
+  annotate("rect", xmin = as.POSIXct("2019-09-05 07:44:21",tz = "UTC"), 
+           xmax = as.POSIXct("2019-09-05 08:02:33", tz = "UTC"), 
+           ymin = -Inf, ymax = +Inf,   fill = "#66C2A5", alpha=0.2) +
+  annotate("rect", xmin = as.POSIXct("2019-09-05 08:02:33",tz = "UTC"), 
+           xmax = as.POSIXct("2019-09-05 08:18:20", tz = "UTC"),   
+           ymin = -Inf, ymax = +Inf,   fill = "#FC8D62", alpha = 0.2) +
+  annotate("rect", xmin = as.POSIXct("2019-09-05 09:24:27",tz = "UTC"), 
+           xmax = as.POSIXct("2019-09-05 09:42:43", tz = "UTC"),   
+           ymin = -Inf, ymax = +Inf,   fill = "#66C2A5", alpha = 0.2) +
+  annotate("rect", xmin = as.POSIXct("2019-09-05 09:43:12",tz="UTC"), 
+           xmax = as.POSIXct("2019-09-05 09:56:10", tz = "UTC"),   
+           ymin = -Inf, ymax = +Inf,   fill = "#FC8D62", alpha = 0.2) +
+  annotate("rect", xmin = as.POSIXct("2019-09-05 10:17:58",tz = "UTC"), 
+             xmax = as.POSIXct("2019-09-05 10:37:03", tz = "UTC"),   
+             ymin = -Inf, ymax = +Inf,   fill = "#66C2A5", alpha = 0.2) +
+  annotate("rect", xmin = as.POSIXct("2019-09-05 10:37:03",tz="UTC"), 
+           xmax = as.POSIXct("2019-09-05 10:52:00", tz = "UTC"),   
+           ymin = -Inf, ymax = +Inf,   fill = "#FC8D62", alpha=0.2) +
+  annotate("rect", xmin = as.POSIXct("2019-09-05 11:06:38",tz="UTC"), 
+           xmax = as.POSIXct("2019-09-05 11:22:33", tz="UTC"),   
+           ymin = -Inf, ymax = +Inf,   fill = "#66C2A5", alpha=0.2) +
+  annotate("rect", xmin = as.POSIXct("2019-09-05 11:22:33",tz="UTC"), 
+           xmax = as.POSIXct("2019-09-05 11:34:53", tz = "UTC"),   
+           ymin = -Inf, ymax = +Inf,   fill = "#FC8D62", alpha=0.2) +
+        annotate("rect", xmin = as.POSIXct("2019-09-05 11:56:21",tz="UTC"), 
+                 xmax = as.POSIXct("2019-09-05 12:15:04", tz="UTC"),   
+                 ymin = -Inf, ymax = +Inf,   fill = "#66C2A5", alpha=0.2) +
+  annotate("rect", xmin = as.POSIXct("2019-09-05 12:15:04",tz="UTC"), 
+           xmax = as.POSIXct("2019-09-05 12:33:34", tz = "UTC"),   
+           ymin = -Inf, ymax = +Inf,   fill = "#FC8D62", alpha=0.2) +
+  geom_line(aes(x = date, y = temperature, color = "DHT22")) +
+  geom_line(data = df_sht, aes(x = date, y = temperature, group = site, colour = site)) +  xlab("Time") +
+  ylab(expression('Temperature ('*~degree*C*')')) +
+  theme_bw() +
+  theme(legend.position = "bottom", legend.title = )
+
+p_pm_legend <- get_legend(p_temp)
+require(cowplot)
+pl_assembled<-plot_grid(p,p_temp,align = "v",ncol = 1)
+#ggsave(plot = pl_assembled, filename = "evolution_rht_SHT35_DHT22.svg")
+pl_assembled
+```
+
