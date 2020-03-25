@@ -1,6 +1,8 @@
 # This script takes output the summary 
 # of the temperature and humidity readings from
 # the Sensirion SHT35 sensor in the four Air quality monitors
+# The results of summary_rh_temp are used for "Table 2. Median Humidity and Temperature readings averaged from the four Sensirion SHT35, for
+# each of the five experiments performed."
 
 
 source("utilities.R")

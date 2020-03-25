@@ -1,0 +1,303 @@
+---
+title: "Figure 4 and Figures A10 to A13 - time series"
+output: html_notebook
+---
+
+Figure 4. Time series of experiment 1. From top to bottom: (a) and (b) TSI 3330 OPS Bin size distribution;
+(c) Nanotracer ultrafine particles number concentration 1/ml; (d-h) PM2.5 of the sensors for each model
+of sensor, against DustTrak (red dotted line). The sensors are named according to the box they are
+placed in and their serial number.
+
+```{r setup}
+
+source("utilities.R")
+source("variables.R")
+require(ggplot2)
+require(plotly)
+require(splitstackshape)
+require(cowplot)
+
+
+df <-prepare_sensor_data(sensor_raw_file, cdt) %>%
+  filter(exp!="")
+
+
+dt <- prepare_dusttrak_data(dusttrak_file, cdt) %>%
+  filter(exp!="")
+
+df<- df %>% mutate(sensor_site = paste0(site,"_", sensor))
+
+# Extract the model of the sensor from sensor_id and store it in sensor_1
+df2<-cSplit(indt=df,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE) %>%
+  select(-sensor_2,-sensor_3)->df
+
+ops<- readRDS(file = ops_file) %>%
+  flag_cdt_data(cdt) %>%   
+  filter(exp!="")
+nanotracer <- readRDS(nanotracer_file) %>%
+  flag_cdt_data(cdt) %>%
+    filter(exp!="")
+
+
+customTheme<- theme_bw()+theme(panel.spacing = unit(0, "lines"),
+                               plot.margin = unit(c(0,0,0,0), "lines"))
+
+
+```
+
+
+# (1) RH=54%
+
+
+```{r}
+
+df_exp <- df %>%
+  filter(exp == "(1) RH=54%") %>%
+  ungroup()
+
+
+dt_exp <- dt %>%
+  filter(exp == "(1) RH=54%")
+
+ops_exp<- ops %>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+nanotracer_exp <- nanotracer%>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+
+plotTimeSeries<-function(df_exp, dt_exp, ops_exp, nanotracer_exp){
+  p_ops_3<-ops_exp %>%
+    gather(bin_name, bin_count, starts_with("Bin.")) %>%
+    filter(bin_name %in% c("Bin.1", "Bin.2", "Bin.3")) %>%
+    ggplot() +
+    geom_line(aes(x=date, y= bin_count, color=bin_name, group=bin_name)) +
+    ylab("Number of particles (#/cm3)") + 
+    scale_colour_manual(values = c("#1B9E77", "#D95F02", "#7570B3")) +
+    facet_grid(~source,scales = "free_x") + 
+    customTheme
+  
+  p_ops_4_7<-ops_exp %>%
+    gather(bin_name, bin_count, starts_with("Bin.")) %>%
+    filter(bin_name %in% c("Bin.4", "Bin.5", "Bin.6", "Bin.7")) %>%
+    ggplot() +
+    geom_line(aes(x=date, y= bin_count, color=bin_name, group=bin_name)) +
+    ylab("Number of particles (#/cm3)") + 
+    scale_colour_manual(values = c("#E7298A", "#66A61E", "#E6AB02", "#A6761D")) +
+    facet_grid(~source,scales = "free_x") + 
+    customTheme
+  
+  p_nano<-nanotracer_exp %>%
+    ggplot() +
+    geom_line(aes(x=date, y = N.1.)) +
+    ylab("Ultrafine particles number (#/cm3)") +
+    facet_grid(~source,scales = "free_x") +
+    customTheme
+  
+  
+  
+  p_pms<-ggplot()+
+         geom_line(data = filter(df_exp, sensor_1 == "PMS5003"),
+                   aes(x = date, y = PM25, group = sensor_site, 
+                       colour = sensor_site, 
+                       text = paste0("Box: ", site,
+                                     "<br>Exp: ", exp,
+                                     "<br>Source: ", source))) +
+         labs(y = "PM2.5 (ug/m3)") +
+         geom_line(data = dt_exp, aes(x = date,y = pm2.5), colour = "red", linetype = "dashed") +
+         scale_x_datetime()  + 
+         ggtitle("Plantower PMS5003") + 
+         theme(plot.title = element_text(hjust = 0.5)) +
+         facet_grid(~source, scales = "free_x")  + 
+         customTheme
+  
+  p_opcr1<-ggplot()+
+           geom_line(data = filter(df_exp, sensor_1== "OPCR1"),
+                   aes(x = date, y = PM25, group = sensor_site, colour = sensor_site, 
+                       text = paste0("Box: ", site,
+                                     "<br>Exp: ", exp,
+                                    "<br>Source: ", source))) +
+           labs(y = "PM2.5 (ug/m3)") +
+           geom_line(data = dt_exp, aes(x = date,y = pm2.5), colour = "red", linetype = "dashed")+
+           scale_x_datetime() + 
+           ggtitle("Alphasense OPCR1") + 
+           theme(plot.title = element_text(hjust = 0.5)) +
+           facet_grid(~source,scales = "free_x") + 
+           customTheme
+  
+  p_sps<-ggplot()+
+           geom_line(data = filter(df_exp, sensor_1== "SPS030"),
+                   aes(x = date, y = PM25, group = sensor_site, colour = sensor_site, 
+                       text = paste0("Box: ", site,
+                                     "<br>Exp: ", exp,
+                                    "<br>Source: ", source))) +
+           labs(y = "PM2.5 (ug/m3)") +
+           geom_line(data = dt_exp, aes(x = date,y = pm2.5), colour = "red", linetype = "dashed")+
+           scale_x_datetime() + 
+           ggtitle("Sensirion SPS030") + 
+           theme(plot.title = element_text(hjust = 0.5)) +
+           facet_grid(~source,scales = "free_x") + 
+           customTheme
+  
+  p_sds<-ggplot()+
+           geom_line(data = filter(df_exp, sensor_1== "SDS018"),
+                   aes(x = date, y = PM25, group = sensor_site, colour = sensor_site, 
+                       text = paste0("Box: ", site,
+                                     "<br>Exp: ", exp,
+                                    "<br>Source: ", source))) +
+           labs(y = "PM2.5 (ug/m3)") +
+           geom_line(data = dt_exp, aes(x = date,y = pm2.5), colour = "red", linetype = "dashed")+
+           scale_x_datetime() + 
+           ggtitle("Novafitness SDS018") + 
+           theme(plot.title = element_text(hjust = 0.5)) +
+           facet_grid(~source,scales = "free_x") + 
+           customTheme
+  
+  p_hpma<-ggplot()+
+           geom_line(data = filter(df_exp, sensor_1== "HPMA115S0"),
+                   aes(x = date, y = PM25, group = sensor_site, colour = sensor_site, 
+                       text = paste0("Box: ", site,
+                                     "<br>Exp: ", exp,
+                                    "<br>Source: ", source))) +
+           labs(y = "PM2.5 (ug/m3)") +
+           geom_line(data = dt_exp, aes(x = date,y = pm2.5), colour = "red", linetype = "dashed")+
+           scale_x_datetime() + 
+           ggtitle("Honeywell HPMA115S0") + 
+           theme(plot.title = element_text(hjust = 0.5)) +
+           facet_grid(~source,scales = "free_x") + 
+           customTheme
+  
+  
+  #Extract the legends and labels from the plots
+  legend_ops_3 <- get_legend(p_ops_3)
+  legend_ops_4_7 <- get_legend(p_ops_4_7)
+  legend_p_pms <- get_legend(p_pms)
+  legend_p_opcr1 <- get_legend(p_opcr1)
+  legend_p_sps <- get_legend(p_sps)
+  legend_p_sds <- get_legend(p_sds)
+  legend_p_hpma <- get_legend(p_hpma)
+  label_ops_3<-p_ops_3$labels$y
+  label_ops_4_7 <-p_ops_4_7$labels$y
+  label_p_pms <- p_pms$labels$y
+  
+  hideLegendAndAxis<-theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank())
+  
+  p_ops_3 <- p_ops_3+hideLegendAndAxis
+  p_ops_4_7 <- p_ops_4_7+hideLegendAndAxis
+  p_nano <- p_nano+hideLegendAndAxis
+  p_pms <- p_pms+theme(legend.position = "none")+ theme(axis.title.y=element_blank())
+  p_opcr1 <- p_opcr1+hideLegendAndAxis
+  p_sps <- p_sps+hideLegendAndAxis
+  p_sds <- p_sds+hideLegendAndAxis
+  p_hpma <- p_hpma+hideLegendAndAxis
+  
+  
+  pl_assembled<-plot_grid(p_ops_3, p_ops_4_7, p_nano, 
+               p_hpma, p_opcr1,p_sds,p_sps, p_pms,
+               nrow=8, align = "v", rel_heights = c(0.2, 0.2, 0.2, 0.4, 0.4, 0.4, 0.4,0.4)
+               , labels=c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)", "(g)", "(h)"),label_size = 10 )
+  
+  pl_assembled
+  pl_assembled_legend<-plot_grid(legend_ops_3, legend_ops_4_7, legend_p_hpma, legend_p_opcr1, legend_p_sds, legend_p_sps, legend_p_pms,nrow=3,ncol=3 )
+  
+  pl_assembled_legend
+  
+  
+  list(pl_assembled, pl_assembled_legend)
+}
+#ggsave(pl_assembled,filename = "time_series_no_enclosure_exp_1.svg", height = 14, width = 8)
+
+plotTimeSeries(df_exp, dt_exp, ops_exp, nanotracer_exp)
+#ggsave(pl_assembled_legend, filename = "time_series_no_enclosure_exp_1_legend.svg", height = 14, width = 8)
+
+```
+
+# (2) RH=69%
+
+```{r}
+
+df_exp <- df %>%
+  filter(exp == "(2) RH=69%") %>%
+  ungroup()
+
+
+dt_exp <- dt %>%
+  filter(exp == "(2) RH=69%")
+
+ops_exp<- ops %>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+nanotracer_exp <- nanotracer%>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+
+
+plotTimeSeries(df_exp, dt_exp, ops_exp, nanotracer_exp)
+```
+
+
+# (3) RH=72%
+
+```{r}
+
+
+df_exp <- df %>%
+  filter(exp == "(3) RH=72%") %>%
+  ungroup()
+
+
+dt_exp <- dt %>%
+  filter(exp == "(3) RH=72%")
+
+ops_exp<- ops %>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+nanotracer_exp <- nanotracer%>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+
+
+plotTimeSeries(df_exp, dt_exp, ops_exp, nanotracer_exp)
+
+```
+
+
+# (4) RH=76%
+
+```{r}
+
+
+df_exp <- df %>%
+  filter(exp == "(4) RH=76%") %>%
+  ungroup()
+
+
+dt_exp <- dt %>%
+  filter(exp == "(4) RH=76%")
+
+ops_exp<- ops %>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+nanotracer_exp <- nanotracer%>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+
+
+plotTimeSeries(df_exp, dt_exp, ops_exp, nanotracer_exp)
+
+```
+
+
+# (5) RH=79%
+
+```{r}
+
+df_exp <- df %>%
+  filter(exp == "(5) RH=79%") %>%
+  ungroup()
+
+
+dt_exp <- dt %>%
+  filter(exp == "(5) RH=79%")
+
+ops_exp<- ops %>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+nanotracer_exp <- nanotracer%>% 
+  filter(date >= min(df_exp$date), date<=max(df_exp$date))
+
+
+plotTimeSeries(df_exp, dt_exp, ops_exp, nanotracer_exp)
+
+```

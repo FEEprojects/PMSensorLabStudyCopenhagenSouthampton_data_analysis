@@ -5,7 +5,25 @@ editor_options:
   chunk_output_type: inline
 ---
 
+Figure 6. R2 of the linear regression between the readings of the sensors and the DustTrak for different
+level of relative humidity (each level of relative humidity corresponds to experiments 1 to 5), for candle
+and incense generated concentrations of PM2.5 (peaks and stable concentrations not differentiated). For
+each graph, the colours correspond to the sensors of the model tested. Only the points with a p-value
+<0.05 have been considered. The box and whisker plot horizontal lines represent, from bottom to top,
+the lower quartile, the median and the upper quartile. The vertical lines are drawn to the smallest and
+the largest data point that fall within 1.5 times the interquartile range below the lower quartile and
+above the upper quartile respectively. Values outside these range are considered as outliers.
 
+
+Figure 7. Slopes of the linear regression between the readings of the sensors and the DustTrak (y=sensor,
+x=DustTrak) for different level of relative humidity (each level of relative humidity corresponds to
+experiments 1 to 5), for candle and incense generated concentrations of PM2.5 (peaks and stable
+concentrations not differentiated). For each graph, the colours correspond to the sensors of the model
+tested. The colours are consistent with Figure 6. Only the points with a p-value <0.05 have been
+considered. The box and whisker plot horizontal lines represent, from bottom to top, the lower quartile,
+the median and the upper quartile. The vertical lines are drawn to the smallest and the largest data
+point that fall within 1.5 times the interquartile range below the lower quartile and above the upper
+quartile respectively. Values outside these range are considered as outliers.
 
 ```{r setup}
 
@@ -34,14 +52,13 @@ df %>%
   nest() -> tmp
 
 tmp %>%
-  dplyr::mutate(regression = map(data, ~clean_regression(df =.x,dusttrak = dt, 0))) %>%
+  dplyr::mutate(regression = map(data, ~clean_regression(df = .x, dusttrak = dt, 0))) %>%
   unnest(regression, .drop=TRUE)  ->res
 
 
 
-df2<-cSplit(indt=res,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
-df2 %>%
-  select(-sensor_2,-sensor_3)->res
+res <- cSplit(indt = res,splitCols = c("sensor"), sep = "-", direction = "wide", drop = FALSE) %>%
+  select(-sensor_2, -sensor_3)
 
 res <- res %>%
   flag_site_data(sensor_list)
@@ -59,47 +76,69 @@ res_rh_temp <- res_rh_temp %>%
 
 ```{r}
 
+customTheme<-theme_bw()+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
 
 p_pms<-filter(res_rh_temp,slope_p_value<=0.05) %>%
   filter(grepl("PMS5003",sensor)) %>%
-  ggplot()+    
-  geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
-      geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
+  ggplot() +    
+  geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8) +
+  geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9)) +
+  ylim(c(0,1.2))+
+  facet_grid(~source) +
+  ylab("Slope") + 
+  ggtitle("PMS5003") + 
+  xlab("Relative humidity (%)") +
+  customTheme
 
- ylim(c(0,1.2))+
-  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("PMS5003") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
-p_pms #+facet_grid(~site)
+p_pms
+
 p_opcr1<-filter(res_rh_temp,slope_p_value<=0.05) %>%
   filter(grepl("OPCR1",sensor)) %>%
-   ggplot()+    
- geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
-      geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
-  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("OPCR1") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+  ggplot()+    
+  geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
+  geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
+  facet_grid(~source) +
+  ylab("Slope") + 
+  ggtitle("OPCR1") + 
+  xlab("Relative humidity (%)") +
+  customTheme
 
 p_sps<-filter(res_rh_temp, slope_p_value<=0.05) %>%
   filter(grepl("SPS030",sensor)) %>%
-   ggplot()+    
- geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
-      geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
-   ylim(c(0,1.2))+
-  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("SPS030")+xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
-
-
-p_sds<-filter(res_rh_temp, slope_p_value<=0.05) %>%
-  filter(grepl("SDS018",sensor)) %>%
-   ggplot()+    
-  geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
-    geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
-   ylim(c(0,1.2))+
-  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("SDS018") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
-
-p_hpma<-filter(res_rh_temp, slope_p_value<=0.05) %>%
-  filter(grepl("HPMA115S0",sensor)) %>%
   ggplot()+    
-  geom_boxplot(aes(x = rh_median,y=slope,group=rh_median), size=0.5, fatten=0.8)+
-      geom_line(aes(x = rh_median,y=slope, group = sensor, color = sensor,alpha=0.9))+
-   ylim(c(0,1.2))+
-  facet_grid(~source)+theme_bw()+ylab("Slope") + ggtitle("HPMA115S0") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
+  geom_boxplot(aes(x = rh_median, y = slope, group = rh_median), size=0.5, fatten=0.8)+
+  geom_line(aes(x = rh_median, y = slope, group = sensor, color = sensor, alpha = 0.9))+
+  ylim(c(0,1.2)) +
+  facet_grid(~source) +
+  ylab("Slope") + 
+  ggtitle("SPS030") +
+  xlab("Relative humidity (%)") +
+  customTheme
+
+
+p_sds<-filter(res_rh_temp, slope_p_value <= 0.05) %>%
+  filter(grepl("SDS018", sensor)) %>%
+  ggplot() +    
+  geom_boxplot(aes(x = rh_median, y = slope, group = rh_median), size = 0.5, fatten = 0.8) +
+  geom_line(aes(x = rh_median, y = slope, group = sensor, color = sensor, alpha = 0.9)) +
+  ylim(c(0,1.2)) +
+  facet_grid(~source) +
+  ylab("Slope") + 
+  ggtitle("SDS018") + 
+  xlab("Relative humidity (%)") +
+  customTheme
+
+p_hpma<-filter(res_rh_temp, slope_p_value <= 0.05) %>%
+  filter(grepl("HPMA115S0", sensor)) %>%
+  ggplot() +    
+  geom_boxplot(aes(x = rh_median,y = slope, group = rh_median), size = 0.5, fatten = 0.8) +
+  geom_line(aes(x = rh_median, y = slope, group = sensor, color = sensor, alpha = 0.9)) +
+  ylim(c(0,1.2)) +
+  facet_grid(~source) +
+  ylab("Slope") + 
+  ggtitle("HPMA115S0") + 
+  xlab("Relative humidity (%)") +
+  customTheme
 
 
 pl_sig<-plot_grid(p_pms, p_sps, p_hpma, p_sds, p_opcr1, ncol = 2)
@@ -160,66 +199,6 @@ p_hpma<-filter(res_rh_temp, r_squared_p_value<=0.05) %>%
       geom_line(aes(x = rh_median,y=r_squared, group = sensor, color = sensor,alpha=0.9))+
    ylim(c(0,1))+
   facet_grid(~source)+theme_bw()+ylab("r_squared") + ggtitle("HPMA115S0") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
-
-
-pl_sig<-plot_grid(p_pms, p_sps, p_hpma, p_sds, p_opcr1, ncol = 2)
-p_sps
-p_hpma
-p_sds
-p_opcr1
-pl_sig
-require(plotly)
-ggplotly(pl_sig)
-ggsave(pl_sig, filename = "r_squared_evolution_sig.svg", width=200,height =200,units = "mm")
-
-```
-
-
-# Spearman
-
-```{r}
-
-
-p_pms<-filter(res_rh_temp) %>%
-  filter(grepl("PMS5003",sensor)) %>%
-  ggplot()+    
-  geom_boxplot(aes(x = rh_median,y=spearman,group=rh_median), size=0.5, fatten=0.8)+
-      geom_line(aes(x = rh_median,y=spearman, group = sensor, color = sensor,alpha=0.9))+
-
- ylim(c(0,1.2))+
-  facet_grid(~source)+theme_bw()+ylab("spearman") + ggtitle("PMS5003") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
-p_pms 
-p_opcr1<-filter(res_rh_temp) %>%
-  filter(grepl("OPCR1",sensor)) %>%
-   ggplot()+    
- geom_boxplot(aes(x = rh_median,y=spearman,group=rh_median), size=0.5, fatten=0.8)+
-      geom_line(aes(x = rh_median,y=spearman, group = sensor, color = sensor,alpha=0.9))+
-  facet_grid(~source)+theme_bw()+ylab("spearman") + ggtitle("OPCR1") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
-
-p_sps<-filter(res_rh_temp) %>%
-  filter(grepl("SPS030",sensor)) %>%
-   ggplot()+    
- geom_boxplot(aes(x = rh_median,y=spearman,group=rh_median), size=0.5, fatten=0.8)+
-      geom_line(aes(x = rh_median,y=spearman, group = sensor, color = sensor,alpha=0.9))+
-   ylim(c(0,1.2))+
-  facet_grid(~source)+theme_bw()+ylab("spearman") + ggtitle("SPS030")+xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
-
-
-p_sds<-filter(res_rh_temp) %>%
-  filter(grepl("SDS018",sensor)) %>%
-   ggplot()+    
-  geom_boxplot(aes(x = rh_median,y=spearman,group=rh_median), size=0.5, fatten=0.8)+
-    geom_line(aes(x = rh_median,y=spearman, group = sensor, color = sensor,alpha=0.9))+
-   ylim(c(0,1.2))+
-  facet_grid(~source)+theme_bw()+ylab("spearman") + ggtitle("SDS018") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
-
-p_hpma<-filter(res_rh_temp, spearman_p_value<=0.05) %>%
-  filter(grepl("HPMA115S0",sensor)) %>%
-  ggplot()+    
-  geom_boxplot(aes(x = rh_median,y=spearman,group=rh_median), size=0.5, fatten=0.8)+
-      geom_line(aes(x = rh_median,y=spearman, group = sensor, color = sensor,alpha=0.9))+
-   ylim(c(0,1.2))+
-  facet_grid(~source)+theme_bw()+ylab("spearman") + ggtitle("HPMA115S0") + xlab("Relative humidity (%)")+theme(legend.position = "none", axis.title.x=element_blank(), axis.title.y=element_blank(), plot.title = element_text(hjust = 0.5))
 
 
 pl_sig<-plot_grid(p_pms, p_sps, p_hpma, p_sds, p_opcr1, ncol = 2)

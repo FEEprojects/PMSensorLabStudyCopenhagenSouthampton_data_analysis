@@ -1,0 +1,62 @@
+---
+title: "Limit of detection according to Wallace 2011 and Zikova 2017"
+output: html_notebook
+---
+
+
+
+```{r}
+
+source("utilities.R")
+source("variables.R")
+
+require(dplyr)
+require(splitstackshape)
+
+```
+
+```{r}
+df <- readRDS(sensor_blank)
+df2<-cSplit(indt=df,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
+df2 %>%
+  select(-sensor_2,-sensor_3)->df
+```
+
+
+
+
+```{r}
+require(openair)
+df %>%
+  group_by(sensor_1,date) %>%
+  summarise(mean_pm25 = mean(PM25, na.rm = TRUE)) %>%
+  group_by(sensor_1) %>%
+  mutate(pm25_bin = 
+                           ifelse(mean_pm25<0.5,0.5,
+                           ifelse(mean_pm25<1,1,
+                           ifelse(mean_pm25<1.5,1.5,
+                           ifelse(mean_pm25<2,2,
+                           ifelse(mean_pm25<2.5,2.5,
+                           ifelse(mean_pm25<3,3,
+                                  ifelse(mean_pm25<3.5,3.5,
+                           ifelse(mean_pm25<4,4,
+                                  ifelse(mean_pm25<4.5,4.5,
+                           ifelse(mean_pm25<5,5,
+                                  ifelse(mean_pm25<5.5,5.5,
+                           ifelse(mean_pm25<6,6,
+                                  ifelse(mean_pm25<6.5,6.5,
+                           ifelse(mean_pm25<7,7,
+                                  ifelse(mean_pm25<7.5,7.5,
+                           ifelse(mean_pm25<8,8,
+                                  ifelse(mean_pm25<8.5,8.5,
+                           ifelse(mean_pm25<9,9,
+                                  ifelse(mean_pm25<9.5,9.5,
+                                                                                   ifelse(mean_pm25<10,10,11)))))))))))))))))))))%>%
+  group_by(sensor_1,pm25_bin) %>%
+  summarise(mean = mean(mean_pm25, na.rm = TRUE), sd = sd(mean_pm25, na.rm = TRUE), count = n()) %>%
+  mutate(ratio = mean/sd) 
+
+
+
+```
+

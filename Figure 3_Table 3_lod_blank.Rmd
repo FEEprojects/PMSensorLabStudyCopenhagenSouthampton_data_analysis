@@ -1,0 +1,106 @@
+---
+title: "Limit of detection - blank conditions"
+output: html_notebook
+---
+
+This notebook generates the 3rd figure and table of the paper.
+
+Figure 3. Lower limit of detection of the different models of sensors, under blank conditions, reported
+in PM2.5 μg/m3. The box and whisker plot horizontal lines represent, from bottom to top, the lower
+quartile, the median and the upper quartile. The vertical lines are drawn to the smallest and the largest
+data point that fall within 1.5 times the interquartile range below the lower quartile and above the
+upper quartile respectively. Each dot represents the value obtained by individual sensors.
+
+Table 3. Range of the lower limit of detection of Alphasense OPC-R1, Plantower PMS5003 and Sensirion
+SPS030, under blank condition, reported in number of particles per ml
+
+```{r message=FALSE, warning=FALSE}
+require(splitstackshape)
+require(openair)
+source("variables.R")
+source("utilities.R")
+```
+
+We use the data from the blank experiment.
+
+```{r}
+df <- readRDS(sensor_blank) %>%
+  filter(date>=as.POSIXct("2019-08-26 13:06:00",tz="UTC"),date<=as.POSIXct("2019-08-26 14:34:00",tz="UTC")) %>% # time start and end of experiment.
+  filter(!(sensor %in% c("HPMA115S0-R0B174843287", "OPCR1-178871513", "OPCR1-178872113", "HPMA115S0-T0B190515497"))) # remove the faulty sensors.
+
+df %>%
+  group_by(sensor) %>%
+  summarise(lod=3*sd(PM25,na.rm=TRUE))->sensor_lod
+sensor_lod
+
+# Extract the sensor type from the sensor_id and store it in sensor_1
+df2<-cSplit(indt=sensor_lod,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE) %>%
+  select(-sensor_2,-sensor_3)
+
+p<-df2 %>%
+  filter(lod<=15)%>%
+  ggplot()+geom_boxplot(aes(x=sensor_1, y = lod),outlier.shape = NA)+geom_point(aes(x=sensor_1, y = lod),position = position_jitter(w = 0.2, h = 0))+ylab(quickText("Lower limit of detection PM2.5 (ug/m3)"))+xlab("Model of sensor") +theme_bw()
+p
+
+#ggsave(filename = "lod_paper.svg",plot = p,width = 5,height = 5)
+
+```
+
+
+# Particle numbers
+
+```{r}
+
+df %>% 
+  filter(grepl("PMS5003",sensor)) %>%
+  group_by(sensor) %>%
+  mutate(total = gr03um + gr05um + gr10um + gr25um + gr50um + gr100um) %>%
+  group_by(sensor) %>%
+  summarise(lod_total = 3*sd(total, na.rm = TRUE)/100
+            )->pms5003_lod
+  #Compare this result to the OPS, not the DustTrak + the Nanotracer.
+# integrate the results from the Nanotracer to the graphs I already have: Dashboard?
+  
+pms5003_lod
+
+```
+
+For the OPCR1
+
+```{r}
+
+df %>% 
+  filter(grepl("OPCR1",sensor)) %>%
+  group_by(sensor) %>%
+  mutate(total = Bin1 + Bin2 + Bin3 + Bin4 + Bin5 + Bin6 + Bin7 + Bin8 + Bin9 + Bin10 + Bin11 + Bin12 + Bin13 + Bin14 + Bin15) %>%
+  mutate(total_pn = total / SFR * SamplingPeriod) %>% # Convert to particles/ml
+  group_by(sensor) %>%
+  summarise(lod_total = 3*sd(total_pn, na.rm = TRUE)
+            )->opcr1_lod
+  #Compare this result to the OPS, not the DustTrak + the Nanotracer.
+# integrate the results from the Nanotracer to the graphs I already have: Dashboard?
+  
+opcr1_lod
+
+
+```
+
+
+For the SPS030
+
+```{r}
+
+df %>% 
+  filter(grepl("SPS030",sensor)) %>%
+  group_by(sensor) %>%
+  mutate(total =n05+n1+n10+n25+n4) %>%
+  group_by(sensor) %>%
+  summarise(lod_total = 3*sd(total, na.rm = TRUE)
+            )->sps030_lod
+  
+sps030_lod
+
+
+
+```
+

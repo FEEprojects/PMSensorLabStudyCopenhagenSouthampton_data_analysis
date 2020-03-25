@@ -1,0 +1,119 @@
+---
+title: "Figure 5 - Delay between sensors"
+output: html_notebook
+---
+
+Figure 5. Comparison of the delay of the different model of sensors determined by calculating the
+maximum R2 obtained with the DustTrak by applying different time lag to the readings of each of the
+sensor tested, by model of sensor and by experiment conducted. The box and whisker plot horizontal
+lines represent, from bottom to top, the 1st quartile, the median and the 3rd quartile. The vertical lines
+represent the data points that fall within 1.5 times the interquartile range below the 1st quartile and
+above the 3rd quartile. Values outside these range are considered as outliers and plotted as points (none
+are present here).
+
+
+```{r setup}
+
+
+require(openair)
+require(splitstackshape)
+require(ggpubr)
+source("utilities.R")
+source("variables.R")
+
+df <- prepare_sensor_data(sensor_raw_file, cdt) %>%
+  select(date, sensor, site, PM25, exp, source, variation)
+
+
+dusttrak <- prepare_dusttrak_data(dusttrak_file, cdt)
+
+
+```
+
+
+Calculate the R2 obtained between the sensors and the DustTrak, by adding a delay between 0-100s to the readings of the sensors.
+```{r, warning=FALSE}
+#Initialise
+delay <- 0
+res <- df %>%
+    filter(sensor !="SHT35", exp != "") %>%
+  mutate(date = ymd_hms(date) - seconds(delay)) %>%
+  group_by(sensor, exp) %>%
+  nest() %>%
+dplyr::mutate(regression = map(data, ~clean_regression(df =.x,dusttrak = dusttrak, 0))) %>%
+  unnest(regression, .drop = TRUE) %>%
+  mutate(delay = delay)
+
+
+for(delay in 1:100){
+  df %>%
+    filter(sensor !="SHT35", exp != "") %>%
+  mutate(date = ymd_hms(date) - seconds(delay)) %>%
+  group_by(sensor, date = make_datetime(year =  year(date), month = month(date), 
+                                        day = day(date),hour = hour(date), min=minute(date), 
+                                        sec = round2(second(date)/10,0)*10)) %>% 
+    summarise_each(funs(mean(., na.rm = TRUE)), PM25) -> tmp
+  tmp <- flag_cdt_data(tmp, cdt)
+  tmp %>%
+  group_by(sensor, exp) %>%
+  nest() %>%
+dplyr::mutate(regression = map(data, ~clean_regression(df =.x,dusttrak = dusttrak, 0))) %>%
+  unnest(regression, .drop = TRUE) %>%
+  mutate(delay = delay)->tmp
+  res<-rbind(res,tmp)
+  
+}
+#write.csv(select(res,-data), file = "delay_r_squared.csv")
+```
+
+
+```{r}
+
+
+#res <-read.csv(file = "delay_r_squared.csv")
+df2<-cSplit(indt=res,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE) %>%
+  select(-sensor_2,-sensor_3)->df2
+
+
+p<-df2 %>%
+  filter(exp != "") %>%
+  ggplot() +
+  geom_line(aes(x=delay, y = r_squared_adjusted,group=sensor, colour = sensor)) +
+  facet_grid(exp~sensor_1) +
+  theme_bw() +
+  ylab("Adjusted R2") +
+  xlab("Delay (s)") +
+  theme(strip.text.y = element_text(size = 6))
+
+legend<-get_legend(p)
+#p<-p+theme(legend.position = "none")
+p
+ggplotly(p)
+#ggsave(p,filename="delay_evolution.svg")
+#ggplotly(p)
+```
+
+
+
+```{r}
+
+summary(res)
+
+p<-df2 %>%
+  group_by(sensor_1,sensor, exp) %>%
+  filter(r_squared_adjusted == max(r_squared_adjusted)) %>%
+  summarise(min_delay = min(delay), max_delay = max(delay))%>%
+  filter(exp != "") %>%
+  ggplot() +
+  geom_boxplot(aes(x=exp,y=min_delay)) +
+  #geom_point(aes(x=exp,y=min_delay))+
+  facet_grid(~sensor_1)+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "none") +
+  scale_y_continuous(breaks = seq(0,100, by =5))
+#ggsave(p,filename="delay_evolution_boxplot.svg",width = 7, height = 5)
+
+ggplotly(p)
+
+```
+

@@ -1,0 +1,279 @@
+---
+title: "Table 4, A7 and Figure A15- Coefficient of variation"
+output: html_notebook
+---
+
+Table 4. Coefficient of variation obtained by the different models of sensors for different sources and
+different variations of PM sources where n is the number of unit of each model used for the calculation
+and k is the number of data points available.
+
+Figure A15. Coefficient of variation obtained by the different models of sensors for the different
+experiment, the different sources and different variations of PM sources.
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+
+require(dplyr)
+require(tidyr)
+require(splitstackshape)
+require(openair)
+require(magrittr)
+require(ggplot2)
+require(plotly)
+require(data.table)
+require(zoo)
+source("utilities.R")
+source("variables.R")
+
+```
+
+```{r}
+
+df_corr<- prepare_sensor_data(sensor_delay_corrected, cdt)%>%
+    filter(!(sensor %in% c("HPMA115S0-T0B190900598", "PMS5003-2019031806703", "HPMA115S0-R0B174843287", "OPCR1-178872108","PMS5003-2019042601208")))
+
+df<- prepare_sensor_data(sensor_raw_file, cdt)%>%
+    filter(!(sensor %in% c("HPMA115S0-T0B190900598", "PMS5003-2019031806703", "HPMA115S0-R0B174843287", "OPCR1-178872108","PMS5003-2019042601208")))
+
+df_dusttrak <- prepare_dusttrak_data(dusttrak_file, cdt) 
+
+
+df_ref <- cSplit(indt = df, splitCols = c("sensor"), sep = "-", direction = "wide", drop = FALSE) %>%
+    select(-sensor_2, -sensor_3)
+  
+  
+df_ref_cor<-cSplit(indt=df_corr,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE) %>%
+    select(-sensor_2,-sensor_3)
+```
+
+
+```{r Calculation used in the paper}
+
+
+
+res<-df_ref %>%
+  filter(sensor != "SHT35") %>%
+  filter(exp != "") %>%
+  group_by(date, sensor_1, source, variation) %>%
+ summarise(sd = sd(PM25, na.rm = TRUE),count = n(),PM25_mean = mean(PM25,na.rm=TRUE))%>% 
+  filter(sd!=0) %>% #Work (checked)
+  mutate(CV = sd/PM25_mean ) %>%
+  mutate(sum_cv_squared = CV*CV*(count-1)) %>%
+  ungroup() %>%
+  group_by(sensor_1, source, variation) %>%
+  summarise(sqrt(sum(sum_cv_squared,na.rm=TRUE)/sum(count-1)),n(),mean(count))
+res
+#write.csv(res,"test_cv_niosh.csv")
+
+
+```
+
+```{r Same on corrected data}
+res<-df_ref_corr %>%
+  filter(sensor != "SHT35") %>%
+  filter(exp != "") %>%
+  group_by(date, sensor_1, source, variation) %>%
+ summarise(sd = sd(PM25, na.rm = TRUE),count = n(),PM25_mean = mean(PM25,na.rm=TRUE))%>% 
+  filter(sd!=0) %>% #Work (checked)
+  mutate(CV = sd/PM25_mean ) %>%
+  mutate(sum_cv_squared = CV*CV*(count-1)) %>%
+  ungroup() %>%
+  group_by(sensor_1, source, variation) %>%
+  summarise(sqrt(sum(sum_cv_squared,na.rm=TRUE)/sum(count-1)),n(),mean(count))
+res
+
+```
+
+```{r}
+res<-df_ref %>%
+  filter(sensor != "SHT35") %>%
+  filter(exp != "") %>%
+  group_by(date, sensor_1, source, variation, exp) %>%
+ summarise(sd = sd(PM25, na.rm = TRUE),count = n(),PM25_mean = mean(PM25,na.rm=TRUE))%>% 
+  filter(sd!=0) %>% #Work (checked)
+  mutate(CV = sd/PM25_mean ) %>%
+  mutate(sum_cv_squared = CV*CV*(count-1)) %>%
+  ungroup() %>%
+  group_by(sensor_1, source, variation, exp) %>%
+  summarise(CV=sqrt(sum(sum_cv_squared,na.rm=TRUE)/sum(count-1)),k=n(),n=mean(count))
+
+p<-res %>%
+  filter(exp != "") %>%
+  filter(source!="")%>%
+  mutate(source_variation = paste0(source, "\n", variation)) %>%
+  ggplot()+
+  geom_point(aes(x=source_variation, y = CV))+
+  facet_grid(exp~sensor_1)+
+  theme_bw() +
+  ylab("Coefficient of variation")+xlab("Sensor model")+theme(strip.text.y = element_text(size = 6), axis.text.x = element_text(size = 6))
+p
+#ggsave(p,filename = "cv_per_source_variation_exp.svg", height = 7, width = 8)
+```
+
+
+
+```{r}
+
+df_corr %>%
+  ungroup() %>%
+  filter(sensor=="PMS5003-2019031806704") %>%
+  ggplot()+geom_line(aes(x=date,y=PM25,group=sensor))+geom_line(data = filter(df,sensor=="PMS5003-2019031806704"), aes(x=date,y=PM25,colour="red"))->p
+
+ggplotly(p, dynamicTicks = TRUE)
+
+
+```
+
+
+# On the calibrated data
+
+
+```{r}
+
+
+source("utilities.R")
+source("variables.R")
+
+res_rh_temp<-read.csv("C:/GitHub/AQ_analysis_lab/lm_no_enclosure_cdt_corr.csv")
+
+df <- prepare_sensor_data(sensor_delay_corrected_20190905,cdt_corrected)
+
+head(res_rh_temp)
+
+
+df %>% inner_join(select(res_rh_temp, sensor, exp, source, slope, intercept, slope_p_value), by = c("sensor", "exp", "source")) -> df_coeff
+
+df_coeff %>% 
+  group_by(sensor) %>%
+  mutate(PM25_corr = ifelse(slope_p_value<=0.05,(PM25-intercept)/slope), -999) %>%
+  filter(PM25_corr != -999) -> df_calibrated
+require(trelliscopejs)
+df_calibrated %>%
+ggplot(aes(x = date, y = PM25_corr)) + geom_line() + facet_trelliscope(exp~sensor,ncol=5)
+
+
+dusttrak <- prepare_dusttrak_data(dusttrak_file, cdt_corrected)
+require(splitstackshape)
+df2<-cSplit(indt=df_calibrated,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
+
+df2 %>%
+  select(-sensor_2,-sensor_3)->df_calibrated
+
+
+res<-df_calibrated %>%
+  filter(sensor != "SHT35") %>%
+  filter(exp != "") %>%
+  filter(PM25_corr>=0) %>%
+  group_by(date, sensor_1, source, variation) %>%
+ summarise(sd = sd(PM25_corr, na.rm = TRUE),count = n(),PM25_mean = mean(PM25_corr,na.rm=TRUE))%>% 
+  filter(sd!=0) %>% #Work (checked)
+  mutate(CV = sd/PM25_mean ) %>%
+  mutate(sum_cv_squared = CV*CV*(count-1)) %>%
+  ungroup() %>%
+  group_by(sensor_1, source, variation) %>%
+  summarise(CV = sqrt(sum(sum_cv_squared,na.rm=TRUE)/sum(count-1)),n(),mean(count))
+res
+
+
+res<-dcast(setDT(filter(res,source!="")), sensor_1 ~ source+variation, value.var = c("CV"))
+res
+write.csv(res,"CV_calibrated.csv")
+```
+
+The coefficient of variation increases after the calibration...
+
+# On the data calibrated for all models of sensors.
+
+```{r}
+
+df <- prepare_sensor_data("C:/GitHub/AQ_analysis_lab/sensor_delay_corrected_20190905.rds", cdt_corrected)
+dt <- prepare_dusttrak_data(dusttrak_file, cdt_corrected)
+
+```
+
+```{r}
+
+df2<-cSplit(indt=df,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
+
+df2 %>%
+  select(-sensor_2,-sensor_3)->df
+
+df %>%
+  filter(date>=as.POSIXct("2018-08-28 00:00:00",tz="UTC")) %>% #before that the DustTrak was set to take a reading every min, and after every 10 seconds
+  select(sensor, exp, source, date, PM25, sensor_1) %>%
+  filter(sensor!="SHT35") %>%
+  filter(exp!="") %>%
+  filter(grepl("No Enclosure",exp)) %>%
+  group_by(exp, source, sensor_1) %>%
+  nest() -> tmp
+
+tmp %>%
+  dplyr::mutate(regression = map(data, ~clean_regression(df =.x,dusttrak = dt, 0))) %>%
+  unnest(regression, .drop=TRUE)  ->res
+res
+require(stringr)
+res %>%
+  mutate(rh_chamber = str_split(exp, " ")[[1]][1],
+         temp_chamber = str_split(exp, " ")[[1]][2]) ->tmp
+
+df %>% inner_join(select(res, sensor_1, exp, source, slope, intercept, slope_p_value), by = c("sensor_1", "exp", "source")) -> df_coeff
+
+df_coeff %>% 
+  group_by(sensor) %>%
+  mutate(PM25_corr = ifelse(slope_p_value<=0.05,(PM25-intercept)/slope), -999) %>%
+  filter(PM25_corr != -999) -> df_calibrated_sensor_model
+
+
+
+res<-df_calibrated_sensor_model %>%
+  filter(sensor != "SHT35") %>%
+  filter(exp != "") %>%
+  filter(PM25_corr>=0) %>%
+  group_by(date, sensor_1, source, variation) %>%
+ summarise(sd = sd(PM25_corr, na.rm = TRUE),count = n(),PM25_mean = mean(PM25_corr,na.rm=TRUE))%>% 
+  filter(sd!=0) %>% #Work (checked)
+  mutate(CV = sd/PM25_mean ) %>%
+  mutate(sum_cv_squared = CV*CV*(count-1)) %>%
+  ungroup() %>%
+  group_by(sensor_1, source, variation) %>%
+  summarise(CV = sqrt(sum(sum_cv_squared,na.rm=TRUE)/sum(count-1)),n(),mean(count))
+res
+
+
+res<-dcast(setDT(filter(res,source!="")), sensor_1 ~ source+variation, value.var = c("CV"))
+res
+write.csv(res,"CV_calibrated_sensor_model.csv")
+
+```
+
+Idem, it increases after calibration.
+
+# CV according oto appendix C of https://www.cdc.gov/niosh/docs/2012-162/pdfs/2012-162.pdf 
+
+```{r}
+
+
+yi<-df_calibrated_sensor_model %>%
+  filter(sensor != "SHT35") %>%
+  filter(exp != "") %>%
+  filter(PM25_corr>=0) %>%
+  group_by(sensor, source, variation) %>%
+ summarise(yi = sum(PM25)/n(), k =n())
+
+yl<-df_calibrated_sensor_model %>%
+  filter(sensor != "SHT35") %>%
+  filter(exp != "") %>%
+  filter(PM25_corr>=0) %>%
+  group_by(date, source, variation, sensor_1) %>%
+ summarise(yl = sum(PM25)/n(), u = n())
+
+
+tmp<- df_calibrated_sensor_model %>%
+   inner_join(yi, by=c("sensor", "source", "variation")) %>%
+   inner_join(yl, by = c("date", "source", "variation", "sensor_1"))
+
+ 
+yprim <-  tmp %>%
+  group_by(date,sensor_1, source, variation) %>%
+  summarise(yprim = sum(yi)/mean(u))
+yprim
+```

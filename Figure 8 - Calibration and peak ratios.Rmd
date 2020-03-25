@@ -1,9 +1,16 @@
 ---
-title: "Calibration of the sensors"
+title: "Figure 8 - Calibration of the sensors"
 output: html_notebook
 editor_options: 
   chunk_output_type: inline
 ---
+
+Figure 8. Ratio of the maximum value of the peaks measured by the sensors against the maximum
+value of the peaks measured by the DustTrak before and after calibration for each experiment. The box
+and whisker plot horizontal lines represent, from bottom to top, the lower quartile, the median and the
+upper quartile. The vertical lines are drawn to the smallest and the largest data point that fall within
+1.5 times the interquartile range below the lower quartile and above the upper quartile respectively.
+Values outside these range are considered as outliers and plotted as points.
 
 ```{r setup}
 
@@ -38,8 +45,7 @@ tmp %>%
 
 
 
-df2<-cSplit(indt=res,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
-df2 %>%
+res<-cSplit(indt=res,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE) %>%
   select(-sensor_2,-sensor_3)->res
 
 res <- res %>%
@@ -62,10 +68,8 @@ df_coeff %>%
   mutate(PM25_corr = ifelse(slope_p_value<=0.05,(PM25-intercept)/slope), -999) %>%
   filter(PM25_corr != -999) -> df_calibrated
 
-df2<-cSplit(indt=df_calibrated,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
-
-df2 %>%
-  select(-sensor_2,-sensor_3)->df_calibrated
+df_calibrated<-cSplit(indt=df_calibrated,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE) %>%
+  select(-sensor_2,-sensor_3)
 ```
 
 What does it looks like?
@@ -129,7 +133,7 @@ ggplotly(p_sps030, dynamicTicks = TRUE)
 ggplotly(p_hpma, dynamicTicks = TRUE)
 ```
 
-Now if we extract the peaks
+Now we extract the peaks.
 
 ```{r}
 peaks<-readRDS(file="datasets/peaks_characteristics.rds") 
@@ -159,51 +163,11 @@ res_bind<-res_bind %>%
 
 
 
-df2<-cSplit(indt=res_bind,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
-
-df2 %>%
-  select(-sensor_2,-sensor_3)->res_bin
+res_bin<-cSplit(indt=res_bind,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE) %>%
+  select(-sensor_2,-sensor_3)
 
 
 ```
-
-# Influence of the concentration on the value of the ratio
-
-```{r}
-
-res_bin %>%
-  filter(Variation == "Peak") %>%
-  ggplot(aes(x=Experiment,y=ratio)) + 
-  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75))+
-  facet_wrap(sensor_1~Source,ncol=4)+ylab("Ratio sensor/dusttrak")+theme_bw()->p
-p
-
-res_bin %>%
-  filter(Variation == "Peak") %>%
-  ggplot(aes(x=Experiment,y=ratio)) + 
-  geom_boxplot()+
-  facet_wrap(sensor_1~Source,ncol=2)+ylab("Ratio sensor/dusttrak")+theme_bw()->p
-p
-#ggsave(p,filename = "peaks_ratio.png",width = 12, height = 12)
-
-
-res_bin %>%
-  filter(Variation == "Peak") %>%
-  ggplot(aes(x=Experiment,y=ratio)) + 
-  geom_boxplot(outlier.shape = NA)+
-  facet_wrap(sensor_1~Source,ncol=2)+ylab("Ratio sensor/dusttrak")+theme_bw()+
-  scale_y_continuous(limits = c(0,quantile(res_bin$ratio, c(0.9)))) -> p
-p
-#ggsave(p,filename = "peaks_ratio_no_outliers.png",width = 12, height = 12)
-
-p<-res_bin %>%
-  filter(Variation == "Peak") %>%
-  ungroup() %>%
-  ggplot() + geom_point(aes(x=Concentration,y=ratio,color=sensor))+facet_wrap(sensor_1~Source,ncol=4,scales="free")+ylab("Ratio sensor/dusttrak")
-ggplotly(p, dynamicTicks = TRUE)
-
-```
-
 
 
 # Compare with uncalibrated data
@@ -211,24 +175,27 @@ ggplotly(p, dynamicTicks = TRUE)
 ```{r}
 
 res <- df %>%
-    filter(date>=as.POSIXct(paste("2019-09-05", peaks[1,]$Start),tz="UTC"), date<=as.POSIXct(paste("2019-09-05", peaks[1,]$End),tz="UTC")) %>%
-    group_by(sensor) %>%
-  filter(PM25>=1) %>%
+  filter(date >= as.POSIXct(paste("2019-09-05", peaks[1,]$Start), tz = "UTC"), 
+         date <= as.POSIXct(paste("2019-09-05", peaks[1,]$End), tz = "UTC")) %>%
+  group_by(sensor) %>%
+  filter(PM25 >= 1) %>%
   summarise(max_value = max(PM25)) %>%
-    mutate(Experiment = peaks[1,]$Experiment, Source = peaks[1,]$Source, Variation= peaks[1,]$Variation, Number = peaks[1,]$Number)
+  mutate(Experiment = peaks[1, ]$Experiment, Source = peaks[1, ]$Source, Variation = peaks[1, ]$Variation, Number = peaks[1, ]$Number)
 for(row in 2:nrow(peaks)){
   df %>%
-    filter(date>=as.POSIXct(paste("2019-09-05", peaks[row,]$Start),tz="UTC"), date<=as.POSIXct(paste("2019-09-05", peaks[row,]$End),tz="UTC")) %>%
+    filter(date >= as.POSIXct(paste("2019-09-05", peaks[row, ]$Start), tz = "UTC"), 
+           date <= as.POSIXct(paste("2019-09-05", peaks[row, ]$End), tz = "UTC")) %>%
     group_by(sensor) %>%
-      filter(PM25>=1) %>%
+    filter(PM25 >= 1) %>%
   summarise(max_value = max(PM25)) %>%
-    mutate(Experiment = peaks[row,]$Experiment, Source = peaks[row,]$Source, Variation= peaks[row,]$Variation, Number = peaks[row,]$Number) -> tmp
+  mutate(Experiment = peaks[row, ]$Experiment, Source = peaks[row, ]$Source, 
+         Variation= peaks[row, ]$Variation, Number = peaks[row, ]$Number) -> tmp
   res<-rbind(res,tmp)
   
 } 
-res %>%
-  inner_join(peaks, by=c("Source", "Experiment", "Variation", "Number"))  %>%
-  mutate(ratio = max_value/Concentration)->res_bind_uncalibrated
+res_bind_uncalibrated<- res %>%
+  inner_join(peaks, by = c("Source", "Experiment", "Variation", "Number"))  %>%
+  mutate(ratio = max_value/Concentration)
 
 
 res_bind$status <- "Calibrated"
@@ -263,9 +230,9 @@ plot_grid(p_legend)
 p<-p+theme(legend.position = "none")
 p<-p+  theme(panel.spacing = unit(0, "lines")) +
   theme(plot.margin = unit(c(0,0,0,0), "lines"))
-
-ggsave(p,filename = "ratio_comparison_spacing.svg",unit = "mm", width= 180, height = 240)
-ggsave(as_ggplot(p_legend),filename = "ratio_comparison_legend.svg",unit = "mm", width= 180, height = 240)
+p
+#ggsave(p,filename = "ratio_comparison_spacing.svg",unit = "mm", width= 180, height = 240)
+#(as_ggplot(p_legend),filename = "ratio_comparison_legend.svg",unit = "mm", width= 180, height = 240)
 
 
 ```

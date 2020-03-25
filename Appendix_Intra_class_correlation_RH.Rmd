@@ -1,0 +1,87 @@
+---
+  title: "Appendix \"Evolution of humidity and temperature during the experiments - Intra Class Correlation for Coefficient of Variation"
+output: html_notebook
+---
+
+```{r}
+source("utilities.R")
+source("variables.R")
+df <- readRDS(file = sensor_raw_file)
+```
+
+```{r}
+
+df %>%
+  filter(sensor == "SHT35") %>% 
+  select(site,humidity,exp) %>%
+  group_by(exp) %>%
+  mutate(grouped_id = row_number()) %>%
+  filter(exp!="") %>%
+spread(exp, humidity) %>%
+  ungroup() %>%
+  select(-site,-grouped_id)->tmp
+
+
+qqnorm(tmp$`(1) RH=54%`)
+qqnorm(tmp$`(2) RH=69%`)
+qqnorm(tmp$`(3) RH=72%`)
+qqnorm(tmp$`(4) RH=76%`)
+qqnorm(tmp$`(5) RH=79%`)
+
+
+
+```
+
+The readings obtained do not follow a normal distribution, so the calculations should be conducted on the median.
+
+```{r}
+df %>%
+  filter(sensor == "SHT35") %>%
+  group_by(exp, site) %>%
+  summarise(temp = mean(temperature, na.rm = TRUE), 
+            temp_med = median(temperature, na.rm = TRUE),
+            temp_min = min(temperature, na.rm = TRUE), 
+            temp_max = max(temperature, na.rm = TRUE),
+            temp_sd = sd(temperature, na.rm = TRUE),
+            rh = mean(humidity, na.rm = TRUE), 
+            rh_med = median(humidity, na.rm = TRUE), 
+            rh_min = min(humidity, na.rm = TRUE),
+            rh_max = max(humidity, na.rm = TRUE),
+            rh_sd = sd(humidity, na.rm= TRUE)) ->summary_rh_temp_site
+
+summary_rh_temp_site %>%  
+  select(site,rh_med,exp) %>%
+spread(site, rh_med) %>%
+  ungroup() %>%
+  select(-exp)->tmp
+head(tmp)
+require(psych)
+ICC(t(tmp),missing=FALSE)
+
+```
+https://www.sciencedirect.com/science/article/pii/S1556370716000158?via%3Dihub#f0005 
+In that case we want ICC(3,k) two way, mixedd effect, k raters, consistency (or absolute agreement but that is not implemented)
+
+It has an ICC-score of 0.96313504	 with a p-value of 2.627437e-06 and a 95% range of 0.846408632	0.99740506. So good to excellent reliability.
+
+
+
+```{r}
+
+df %>%
+  filter(sensor == "SHT35") %>%
+  group_by(exp) %>%
+  filter(exp!="") %>%
+  summarise(temp = mean(temperature, na.rm = TRUE), 
+            temp_med = median(temperature, na.rm = TRUE),
+            temp_min = min(temperature, na.rm = TRUE), 
+            temp_max = max(temperature, na.rm = TRUE),
+            temp_2sd = 2*sd(temperature, na.rm = TRUE),
+            rh = mean(humidity, na.rm = TRUE), 
+            rh_med = median(humidity, na.rm = TRUE), 
+            rh_min = min(humidity, na.rm = TRUE),
+            rh_max = max(humidity, na.rm = TRUE),
+            rh_2sd = 2*sd(humidity, na.rm= TRUE)) ->summary_rh_temp
+
+summary_rh_temp
+```

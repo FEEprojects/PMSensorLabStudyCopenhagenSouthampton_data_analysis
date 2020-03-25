@@ -12,8 +12,7 @@ require(splitstackshape)
 df <-prepare_sensor_data(sensor_raw_file, cdt) %>%
   select(date, sensor, site, PM25, exp, source, variation)
 
-df2<-cSplit(indt=df,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE)
-df2 %>%
+df2<-cSplit(indt=df,splitCols = c("sensor"),sep="-",direction="wide",drop=FALSE) %>%
   select(-sensor_2,-sensor_3)->df
 
 dt <- prepare_dusttrak_data(dusttrak_file, cdt)
