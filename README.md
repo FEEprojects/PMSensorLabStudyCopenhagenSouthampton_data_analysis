@@ -7,3 +7,5 @@ https://doi.org/10.3390/s20082219
 
 
 [![DOI](https://zenodo.org/badge/236051845.svg)](https://zenodo.org/badge/latestdoi/236051845)
+
+The dataset can be accessed at: https://zenodo.org/record/3695827#.Xn3pZXLLeUk 
