@@ -16,7 +16,7 @@ require(ggplot2)
 require(plotly)
 require(splitstackshape)
 require(cowplot)
-
+require(scales)
 
 df <-prepare_sensor_data(sensor_raw_file, cdt) %>%
   filter(exp!="")
@@ -73,6 +73,7 @@ plotTimeSeries<-function(df_exp, dt_exp, ops_exp, nanotracer_exp){
     ylab("Number of particles (#/cm3)") + 
     scale_colour_manual(values = c("#1B9E77", "#D95F02", "#7570B3")) +
     facet_grid(~source,scales = "free_x") + 
+    scale_y_continuous(labels = function(x) format(x, scientific = TRUE))+
     customTheme
   
   p_ops_4_7<-ops_exp %>%
@@ -83,13 +84,15 @@ plotTimeSeries<-function(df_exp, dt_exp, ops_exp, nanotracer_exp){
     ylab("Number of particles (#/cm3)") + 
     scale_colour_manual(values = c("#E7298A", "#66A61E", "#E6AB02", "#A6761D")) +
     facet_grid(~source,scales = "free_x") + 
+    scale_y_continuous(labels = function(x) format(x, scientific = TRUE))+
     customTheme
   
   p_nano<-nanotracer_exp %>%
     ggplot() +
     geom_line(aes(x=date, y = N.1.)) +
     ylab("Ultrafine particles number (#/cm3)") +
-    facet_grid(~source,scales = "free_x") +
+    facet_grid(~source,scales = "free_x") + 
+    scale_y_continuous(labels = function(x) format(x, scientific = TRUE))+
     customTheme
   
   
@@ -205,9 +208,9 @@ plotTimeSeries<-function(df_exp, dt_exp, ops_exp, nanotracer_exp){
 }
 #ggsave(pl_assembled,filename = "time_series_no_enclosure_exp_1.svg", height = 14, width = 8)
 
-plotTimeSeries(df_exp, dt_exp, ops_exp, nanotracer_exp)
-#ggsave(pl_assembled_legend, filename = "time_series_no_enclosure_exp_1_legend.svg", height = 14, width = 8)
-
+p<-plotTimeSeries(df_exp, dt_exp, ops_exp, nanotracer_exp)
+ggsave(p[[1]], filename = "time_series_no_enclosure_exp_1.svg", height = 14, width = 8)
+p[[1]]
 ```
 
 # (2) RH=69%

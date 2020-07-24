@@ -14,7 +14,8 @@ require(ggforce)
 require(dplyr)
 require(ggplot2)
 require(plotly)
-df_rht<-readRDS(dht22_file)
+df_rht<-readRDS(dht22_file) %>%
+  flag_cdt_data(cdt)
 
 
 df<-readRDS(sensor_raw_file)
@@ -78,3 +79,52 @@ pl_assembled<-plot_grid(p,p_temp,align = "v",ncol = 1)
 pl_assembled
 ```
 
+
+```{r}
+
+df_rht %>%
+  filter(exp!="") %>%
+  group_by(exp) %>%
+  summarise(temp = mean(temperature, na.rm = TRUE), 
+            temp_median = median(temperature, na.rm = TRUE),
+            temp_min = min(temperature, na.rm = TRUE), 
+            temp_max = max(temperature, na.rm = TRUE),
+            temp_sd = sd(temperature, na.rm = TRUE),
+            rh = mean(rh, na.rm = TRUE), 
+            rh_median = median(rh, na.rm = TRUE),
+            rh_min = min(rh, na.rm = TRUE),
+            rh_max = max(rh, na.rm = TRUE),
+            rh_sd = sd(rh, na.rm= TRUE),
+            temp_q_75 = quantile(rh, c(0.75)),
+            temp_q_25 = quantile(rh, c(0.25)),
+            rh_mad_threshold = 2.5*mad(rh, na.rm = TRUE),
+            temp_mad_threshold = 2.5*mad(temperature, na.rm = TRUE)) ->summary_rh_temp
+ggplot(filter(df_rht, exp!="")) + geom_line(aes(x=date, y =rh, color =exp))
+summary_rh_temp
+
+
+exp1<-filter(df_rht, exp=="(1) RH=54%")
+median(exp1$rh, na.rm=TRUE)
+range(exp1$rh, na.rm = TRUE)
+
+
+
+exp2<-filter(df_rht, exp=="(2) RH=69%")
+median(exp2$rh, na.rm=TRUE)
+range(exp2$rh, na.rm = TRUE)
+
+exp3<-filter(df_rht, exp=="(3) RH=72%")
+median(exp3$rh, na.rm=TRUE)
+range(exp3$rh, na.rm = TRUE)
+
+
+exp4<-filter(df_rht, exp=="(4) RH=76%")
+median(exp4$rh, na.rm=TRUE)
+range(exp4$rh, na.rm = TRUE)
+
+
+exp5<-filter(df_rht, exp=="(5) RH=79%")
+median(exp5$rh, na.rm=TRUE)
+range(exp5$rh, na.rm = TRUE)
+
+```

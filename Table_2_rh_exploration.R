@@ -22,7 +22,11 @@ df %>%
             rh_median = median(humidity, na.rm = TRUE),
             rh_min = min(humidity, na.rm = TRUE),
             rh_max = max(humidity, na.rm = TRUE),
-            rh_sd = sd(humidity, na.rm= TRUE)) ->summary_rh_temp
+            rh_sd = sd(humidity, na.rm= TRUE),
+            temp_q_75 = quantile(humidity, c(0.75)),
+            temp_q_25 = quantile(humidity, c(0.25)),
+            rh_mad_threshold = 2.5*mad(humidity, na.rm = TRUE),
+            temp_mad_threshold = 2.5*mad(temperature, na.rm = TRUE)) ->summary_rh_temp
 
 summary_rh_temp
 
